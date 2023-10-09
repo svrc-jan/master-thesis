@@ -13,9 +13,20 @@
 #include <mutex>
 #include <iostream>
 #include <fstream>
-#include "../dzony/dzony.hpp"
+#include <atomic>
 
 using namespace std;
+
+#ifndef _mypoint_t_
+#define _mypoint_t_
+
+struct mypoint_t{
+	double x;
+	double y;
+	double z;
+};
+
+#endif
 
 
 class CTello
