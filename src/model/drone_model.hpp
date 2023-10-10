@@ -1,6 +1,7 @@
 #ifndef __DRONE_MODEL_HPP__
 #define __DRONE_MODEL_HPP__
 
+#include <cstddef>
 
 struct pos_t 
 {
