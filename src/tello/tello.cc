@@ -55,7 +55,7 @@ bool CTello::init(int port, char* net_interface)
             memset(&ifr, 0, sizeof(ifr));
             snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", net_interface);
             if (setsockopt(fdSockCmd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-                printf("cant bind socket to network interface\n");
+                printf("cant bind socket to network interface\r\n");
                 return false;
             }
         }
@@ -76,11 +76,12 @@ bool CTello::init(int port, char* net_interface)
 		fdSockCmd = -1;
 		return false;
 	}
+	printf("tello init\r\n");
         
 
 	threadInterrupt = false;
 	if (pthread_create(&cmdRxThread, 0, cmd_rx_thread_body, this) != 0) {
-		fprintf(stderr, "Failed to start cmd rx thread\n");
+		fprintf(stderr, "Failed to start cmd rx thread\r\n");
 		close();
 		return false;
 	}
@@ -126,7 +127,7 @@ void CTello::close()
 	::close(fdSockCmd);
 	fdSockCmd = -1;
         log_file.close();
-        printf("Tello successfully disconnected\n");
+        printf("Tello successfully disconnected\r\n");
 }
 
 
@@ -182,7 +183,7 @@ void CTello::setStickData(int fast, double roll, double pitch, double throttle, 
 }
 
 bool CTello::takeOff()
-{       printf("TAKEEEEE\n");
+{       printf("TAKEEEEE\r\n");
         setStickData(0, 0, 0, 0, 0);
         sendCmd(0x68, TELLO_CMD_TAKEOFF);
         usleep(100e3);
@@ -314,7 +315,7 @@ uint16_t CTello::parsePacket(uint8_t * buf, int bufLen)
 			uint8_t crc8 = buf[pos++];
 			uint8_t calcCrc8 = calcCRC8(buf, 3);
 			if (crc8 != calcCrc8) {
-				fprintf(stderr, "wrong CRC8 %02X / %02X\n", crc8, calcCrc8);
+				fprintf(stderr, "wrong CRC8 %02X / %02X\r\n", crc8, calcCrc8);
 			}
 			pos++; // uint8_t pacType  = buf[pos++];
 			cmdID   = ((((uint16_t)buf[pos+1]) << 8) | (buf[pos+0]));
@@ -330,7 +331,7 @@ uint16_t CTello::parsePacket(uint8_t * buf, int bufLen)
 			uint16_t crc16    = ((((uint16_t)buf[size-1]) << 8) | (buf[size-2]));
 			uint16_t calcCrc16 = calcCRC16(buf, size - 2);
 			if (crc16 != calcCrc16) {
-				fprintf(stderr, "wrong CRC16 %04X / %04X\n", crc16, calcCrc16);
+				fprintf(stderr, "wrong CRC16 %04X / %04X\r\n", crc16, calcCrc16);
 				cmdID = 0;
 			}
 			//print 'pt:{0:02x}, cmd:{1:4d}={2:04x}, seq:{3:04x}, data_sz:{4:d} - '.format(pacType, cmdID, cmdID, seqID, dataSize)
@@ -343,10 +344,10 @@ uint16_t CTello::parsePacket(uint8_t * buf, int bufLen)
 			ack[pos++] = TELLO_PORT_VIDEO >> 8;
 			cmdID = TELLO_CMD_CONN_ACK;
 		} else {
-			fprintf(stderr, "wrong mark !! %02X\n", mark);
+			fprintf(stderr, "wrong mark !! %02X\r\n", mark);
 		}
 	} else if (buf) {
-		fprintf(stderr, "wrong packet length=%d, 1st byte=%02X\n", bufLen, buf[0]);
+		fprintf(stderr, "wrong packet length=%d, 1st byte=%02X\r\n", bufLen, buf[0]);
 	}
 	return cmdID;
 }

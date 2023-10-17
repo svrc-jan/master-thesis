@@ -1,5 +1,6 @@
 #include "drone_model.hpp"
 
+
 #include <cmath>
 
 Drone_model::Drone_model(/* args */)
