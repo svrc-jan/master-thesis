@@ -81,7 +81,7 @@ struct input_t
 
 	string to_str() const {
 		char buff[256];
-		snprintf(buff, sizeof(buff), "(roll=%4.1f, pitch=%4.1f, throttle=%4.1f, yaw=%4.1f)",
+		snprintf(buff, sizeof(buff), "(roll=%5.2f, pitch=%5.2f, throttle=%5.2f, yaw=%5.2f)",
 			this->roll, this->pitch, this->throttle, this->yaw);
 
 		return string(buff);

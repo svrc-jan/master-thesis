@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "plot/matplotlibcpp.h"
+#include "utils/matplotlibcpp.h"
 
 #include "tello/joystick.h"
 #include "tello/tello.h"
