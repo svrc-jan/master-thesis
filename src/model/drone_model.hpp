@@ -95,7 +95,7 @@ struct input_t
 
 struct state_t 
 {
-	double arr[4];
+	double arr[8];
 
 	double &operator[] (int i) { return arr[i]; };
 	double &x; double &y; double &z; double& a;
