@@ -43,7 +43,8 @@ pos_t Vicon_filter::step(pos_t obs, bool valid)
 
 	obs.a = this->unwrap_angle(obs.a, this->curr_pos.a);
 
-	pos_t diff = obs - this->curr_pos;
+	pos_t diff;
+	diff.data = obs.data - this->curr_pos.data;
 	double lim = this->threshold*(this->hold + 3);
 
 	if (sqrt(pow(diff.x, 2) + pow(diff.y, 2)) < lim &&
