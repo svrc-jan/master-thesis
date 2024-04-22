@@ -115,11 +115,12 @@ typename Model_sim<M>::o_vec Model_sim<M>::step(u_vec input)
 	s_vec ds;
 	M::state_eq(ds.data(), this->state.data(), u.data(), this->params.data());
 
-	this->state = this->state + this->dt*ds;
-	for (int i = 0; i < M::o_dim; i++) {
-		this->state[i] += this->s_noise_sd[i]*this->normal_dist(this->rng);
+	for (int i = 0; i < M::s_dim; i++) {
+		ds[i] += this->s_noise_sd[i]*this->normal_dist(this->rng);
 	}
 
+	this->state += this->dt*ds;
+	
 	return this->obs();
 }
 

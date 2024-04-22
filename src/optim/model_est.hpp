@@ -313,35 +313,49 @@ public:
 		return par_cand;
 	}
 
-	s_vec calculate_state_equation_missmatch(p_vec &par_est, double dt, int u_delay)
+	s_vec calculate_state_equation_corr(p_vec &par_est, double dt, int u_delay)
 	{
-		s_mat res;
+		s_mat s_diff;
+		s_mat s_eq;
+		
+		s_vec stat;
+
 		int S = 0;
 
 		for (int k = 0; k < this->state_est.size(); k++) {
 			int S_k = this->state_est[k]->rows() - u_delay - 1;
-			res.conservativeResize(S + S_k, M::s_dim);
+			s_diff.conservativeResize(S + S_k, M::s_dim);
+			s_eq.conservativeResize(S + S_k, M::s_dim);
 			
-			s_vec ds;
 
 			for (int t = 0; t < S_k; t++) {
-				M::state_eq(ds.data(), 
+				M::state_eq(s_eq.row(S+t).data(), 
 					this->state_est[k]->row(t+u_delay).data(), 
 					this->input_data[k]->row(t).data(),
 					par_est.data());
-				
-				for (int i = 0; i < M::s_dim; i++) {
-					res(S + t, i) = dt*ds[i] + 
-						this->state_est[k]->operator()(t+u_delay, i) -
-						this->state_est[k]->operator()(t+u_delay+1, i);
-				}
+
+				s_diff.row(S+t) = 
+					this->state_est[k]->row(t+u_delay+1) - 
+					this->state_est[k]->row(t+u_delay);
+
+				// for (int i = 0; i < M::s_dim; i++) {
+				// 	state_diff(S + t, i) = dt*ds[i] + 
+				// 		this->state_est[k]->operator()(t+u_delay, i) -
+				// 		this->state_est[k]->operator()(t+u_delay+1, i);
+				// }
 			}
 			
 			S += S_k;
 		}
 
-		res = res.cwiseAbs2();
-		s_vec stat = res.colwise().mean();
+		assert(is_nan(s_diff) && is_nan(s_eq));
+
+		normalize_cols(s_diff);
+		normalize_cols(s_eq);
+
+		assert(is_nan(s_diff) && is_nan(s_eq));
+
+		stat = (s_diff.cwiseProduct(s_eq)).colwise().mean();
 
 		return stat;
 	}

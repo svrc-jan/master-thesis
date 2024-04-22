@@ -56,13 +56,11 @@ int main(int argc, char const *argv[])
 	
 	double dt = config["dt"];	
 	int u_delay = config["u_delay"];
+	int u_delay_max = config["u_delay_max"];
 
 	int max_models = 1000;
 	if (!config["max_models"].is_null()) {
 		max_models = config["max_models"];
-	}
-	if (argc > 2) {
-		max_models = atoi(argv[2]);
 	}
 
 	string log_dir(config["log_dir"]);
@@ -94,7 +92,7 @@ int main(int argc, char const *argv[])
 	options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
 	options.max_num_iterations = 100;
 	options.num_threads = 6;
-	options.minimizer_progress_to_stdout = true;
+	// options.minimizer_progress_to_stdout = true;
 
 	ceres::Solver::Summary summary;
 
@@ -105,8 +103,8 @@ int main(int argc, char const *argv[])
 	
 	int model_delay = u_delay;
 
-	double stat;
-	double best_stat = INFINITY;
+	M::s_vec stat;
+	double best_stat = -INFINITY;
 	int best_delay = -1;
 
 	while (true) {
@@ -115,19 +113,20 @@ int main(int argc, char const *argv[])
 		model_est.solve(options, &summary);
 		cout << summary.BriefReport() << endl;
 
-		best_stat = INFINITY;
+		best_stat = -INFINITY;
 		best_delay = -1;
 
-		for (int d = 0; d < 100; d++) {
-			stat = model_est.calculate_state_equation_missmatch(model_est.param_est, dt, d).sum();
-			// cout << "delay" << d << " | " << stat << endl;
+		for (int d = 0; d < u_delay_max; d++) {
+			stat = model_est.calculate_state_equation_corr(model_est.param_est, dt, d);
+			if (d == model_delay) {
+				 cout << "state eq corr: " << stat.transpose() << endl;
+			}
 
-			if (stat < best_stat) {
-				best_stat = stat;
+			if (stat.minCoeff() > best_stat) {
+				best_stat = stat.minCoeff();
 				best_delay = d;
 			}
 		}
-		cout << "delay est " << best_delay << endl;
 
 		if (best_delay == model_delay) {
 			break;
@@ -139,12 +138,19 @@ int main(int argc, char const *argv[])
 
 	// cout << "delay est" << model_delay << endl;
 
+	if (!config["clear_log_est_dir"].is_null()) {
+		if ((bool)config["clear_log_est_dir"]) {
+			sprintf(buffer, "%s/est/", log_dir.c_str());
+			delete_dir_content(buffer);
+		}
+	}
 
 	for (int i = 0; i < min((int)log_files.size(), max_models); i++) {
 		sprintf(buffer, "%s/est/%s", log_dir.c_str(), log_files[i].c_str());
 		Logger logger(buffer);
 
 		M::o_vec o;
+		logger << "delay" << model_delay << '\n';
 		logger << "params" << model_est.param_est << '\n';
 		for (int t = 0; t < model_est.state_est[i]->rows(); t++) {
 			M::output_eq(o.data(), model_est.state_est[i]->row(t).data());

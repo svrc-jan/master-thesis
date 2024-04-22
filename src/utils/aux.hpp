@@ -15,6 +15,23 @@ using namespace std;
 namespace fs = std::filesystem;
 
 
+template <typename Derived>
+void normalize_cols(Eigen::MatrixBase<Derived> &mat)
+{
+    double var;
+    for (int j = 0; j < mat.cols(); j++) {
+        var = mat.col(j).array().abs2().mean();
+        assert(var > 0);
+        mat.col(j) = mat.col(j) / sqrt(var);
+    }
+}
+
+template<typename Derived>
+inline bool is_nan(const Eigen::MatrixBase<Derived>& x)
+{
+	return ((x.array() == x.array())).all();
+}
+
 template<typename Derived1, typename Derived2>
 void append_row_to_matrix(Eigen::MatrixBase<Derived1> &mat, const Eigen::MatrixBase<Derived2> &vec)
 {
