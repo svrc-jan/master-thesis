@@ -20,10 +20,18 @@ public:
 	typedef typename M::o_vec o_vec;
 	typedef typename M::p_vec p_vec;
 
-	Model_sim(double dt) : dt(dt)
+	Model_sim(double dt, int seed=0) : dt(dt)
 	{
+		if (seed != 0) {
+			this->rng = mt19937(random_device()());
+		}
+		else {
+			this->rng = mt19937(seed);
+		}
+		
 		this->uniform_dist = uniform_real_distribution<double>(0.0, 1.0);
 		this->normal_dist = normal_distribution<double>(0.0, 1.0);
+		this->uniform_int_dist = uniform_int_distribution<>(-1, 1);
 
 		this->s_noise_sd.setZero();
 		this->o_noise_sd.setZero();
@@ -53,13 +61,16 @@ public:
 	s_vec s_noise_sd;
 	o_vec o_noise_sd;
 
-	int u_delay = 0;
+	int u_delay = 0; // expected delay
+	int u_delay_curr = 0; // current delay
+	int u_delay_max_diff = 0; // max_diff
 	double o_miss_prob = 0;
 	double dt;
 private:
 	uniform_real_distribution<double> uniform_dist;
 	normal_distribution<double> normal_dist;
-	random_device rng;
+	uniform_int_distribution<> uniform_int_dist;
+	mt19937 rng;
 
 	list<u_vec> u_buffer;
 };
@@ -91,6 +102,9 @@ typename Model_sim<M>::o_vec Model_sim<M>::reset()
 {
 	this->u_buffer.clear();
 	this->state.setZero();
+
+	this->u_delay_curr = u_delay;
+
 	return this->obs();
 }
 
@@ -102,14 +116,29 @@ typename Model_sim<M>::o_vec Model_sim<M>::step(u_vec input)
 		u = input;
 	}
 	else {
-		if (this->u_buffer.size() == this->u_delay) {
-			u = this->u_buffer.back();
-			this->u_buffer.pop_back();
+		this->u_buffer.push_front(input);
+		if (this->u_buffer.size() > this->u_delay_curr) {
+			auto u_it = this->u_buffer.begin();
+			advance(u_it, this->u_delay_curr);
+			u = *u_it;
+
+			if (this->u_delay_max_diff > 0) {
+				this->u_delay_curr += this->uniform_int_dist(this->rng);
+				this->u_delay_curr = max(this->u_delay_curr, 
+					max(0, this->u_delay - this->u_delay_max_diff));
+
+				this->u_delay_curr = min(this->u_delay_curr, 
+					this->u_delay + this->u_delay_max_diff);
+			}
+
+			while (this->u_buffer.size() > this->u_delay + this->u_delay_max_diff+1) {
+				this->u_buffer.pop_back();
+			}
 		}
 		else {
 			u.setZero();
 		}
-		this->u_buffer.push_front(input);
+		
 	}
 
 	s_vec ds;
@@ -164,6 +193,10 @@ void Model_sim<M>::set_config(json config)
 {
 	if (!config["u_delay"].is_null()) {
 		this->u_delay = config["u_delay"];
+	}
+
+	if (!config["u_delay_max_diff"].is_null()) {
+		this->u_delay_max_diff = config["u_delay_max_diff"];
 	}
 
 	if (!config["o_miss_prob"].is_null()) {

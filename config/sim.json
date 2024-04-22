@@ -3,7 +3,8 @@
 	"T_u_change" : 100,
 	"T_max" : 1000,
 	"N_sim" : 10,
-	"u_delay" : 75,
+	"u_delay" : 100,
+	"u_delay_max_diff" : 0,
 	"o_miss_prob" : 0.03,
 	
 	"p" : "random",
@@ -12,13 +13,13 @@
 
 	"s_noise_sd" : [
 		0.0, 0.0, 0.0, 0.0,
-		10, 10, 10, 10
+		1, 1, 1, 1
 	],
 
 	"o_noise_sd" : [
 		0.001, 0.001, 0.001, 0.1
 	],
 
-	"log_dir" : "logs/sim",
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/sim",
 	"clear_log_dir" : true
 }

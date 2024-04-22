@@ -122,8 +122,8 @@ int main(int argc, char const *argv[])
 				 cout << "state eq corr: " << stat.transpose() << endl;
 			}
 
-			if (stat.minCoeff() > best_stat) {
-				best_stat = stat.minCoeff();
+			if (stat.mean() > best_stat) {
+				best_stat = stat.mean();
 				best_delay = d;
 			}
 		}

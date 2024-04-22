@@ -94,6 +94,8 @@ int main(int argc, char const *argv[])
 
 			logger << "input" << t << input.data << '\n';
 			pos = sim.step(input);
+			logger << "curr_delay" << sim.u_delay_curr << '\n';
+			
 
 			t += 1;
 			if (t >= T_max) break;
