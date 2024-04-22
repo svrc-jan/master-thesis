@@ -83,7 +83,7 @@ struct ParamStateRes
 		M::state_eq(ds, this->s_curr, this->u, p);
 
 		for(int i = 0; i < M::s_dim; i++) {
-			res[i] = this->C[i]*(this->s_curr[i] - this->s_next[i] + this->dt*ds[i]);
+			res[i] = this->C[i]*((this->s_curr[i] - this->s_next[i])/this->dt + ds[i]);
 		}
 
 		return true;
