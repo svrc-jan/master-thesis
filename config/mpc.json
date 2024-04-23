@@ -1,0 +1,31 @@
+{
+	"dt" : 0.02,
+	"h" : 15,
+	
+	"C_s" : [
+		1, 1, 1, 1, 
+		0, 0, 0, 0
+	],
+
+	"C_s_end" : [
+		100, 100, 100, 100,
+		100, 100, 100, 100
+	],
+
+	"C_u" : [
+		15, 15, 15, 15
+	],
+
+	"target" : [
+		1, 1, 1, 0.1,
+		0, 0, 0, 0
+	],
+
+	"target_threshold" : 0.1,
+
+	"solver_tol" : 1e-3,
+	"solver_max_iter" : 5,
+	"solver_stdout" : false,
+	"solver_threads" : 6,
+	"solver_linear_solver_type" : "sparse_cholesky"
+}

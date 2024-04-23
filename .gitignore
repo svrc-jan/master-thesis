@@ -6,3 +6,4 @@
 /Makefile
 /requirements.txt
 /logs/sim/*
+/logs/sim_mpc/*

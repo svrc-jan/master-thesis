@@ -51,10 +51,8 @@ int main(int argc, char const *argv[])
 	int T_u_change = config["T_u_change"];
 	int N_sim = config["N_sim"];
 
-	Model_sim<M> sim(dt);
+	Model_sim<M> sim;
 	sim.set_config(config);
-
-	cout << "o noise sd: " << sim.o_noise_sd.transpose() << endl;
 
 
 	string log_dir = config["log_dir"];
@@ -78,6 +76,7 @@ int main(int argc, char const *argv[])
 
 		Logger logger(log_name);
 
+		logger << "delay" << sim.u_delay << '\n';
 		logger << "params" << sim.params << '\n';
 
 		pos = sim.reset();
@@ -94,7 +93,9 @@ int main(int argc, char const *argv[])
 
 			logger << "input" << t << input.data << '\n';
 			pos = sim.step(input);
-			logger << "curr_delay" << sim.u_delay_curr << '\n';
+
+			if (sim.u_delay_max_diff > 0)
+				logger << "curr_delay" << sim.u_delay_curr << '\n';
 			
 
 			t += 1;

@@ -11,9 +11,12 @@
 
 #include <eigen3/Eigen/Dense>
 
+#include "utils/json.hpp"
+
 using namespace std;
 namespace fs = std::filesystem;
 
+using json = nlohmann::json;
 
 template <typename Derived>
 void normalize_cols(Eigen::MatrixBase<Derived> &mat)
@@ -113,6 +116,20 @@ Eigen::Vector<double, -1> array_to_vector(vector<double> array)
     }
 
     return vector; 
+}
+
+
+json get_json_config(string file_name)
+{
+	if (!file_exists(file_name)) {
+			cerr << "config file not found" << endl;
+			exit(1);
+		}
+
+	ifstream config_file(file_name);
+	json config = json::parse(config_file);
+
+	return config;
 }
 
 #endif

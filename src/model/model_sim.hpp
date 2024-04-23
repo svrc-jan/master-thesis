@@ -20,7 +20,7 @@ public:
 	typedef typename M::o_vec o_vec;
 	typedef typename M::p_vec p_vec;
 
-	Model_sim(double dt, int seed=0) : dt(dt)
+	Model_sim(int seed=0)
 	{
 		if (seed != 0) {
 			this->rng = mt19937(random_device()());
@@ -65,7 +65,7 @@ public:
 	int u_delay_curr = 0; // current delay
 	int u_delay_max_diff = 0; // max_diff
 	double o_miss_prob = 0;
-	double dt;
+	double dt = 1;
 private:
 	uniform_real_distribution<double> uniform_dist;
 	normal_distribution<double> normal_dist;
@@ -191,6 +191,8 @@ typename Model_sim<M>::u_vec Model_sim<M>::random_input()
 template<class M>
 void Model_sim<M>::set_config(json config)
 {
+	this->dt = config["dt"];
+
 	if (!config["u_delay"].is_null()) {
 		this->u_delay = config["u_delay"];
 	}

@@ -25,7 +25,7 @@ include_directories(${CERES_INCLUDE_DIRS})
 
 set(manual_control_file "${PROJECT_SOURCE_DIR}/src/manual_control.cpp")
 set(filter_test_file "${PROJECT_SOURCE_DIR}/src/filter_test.cpp")
-set(mpc_test_file "${PROJECT_SOURCE_DIR}/src/mpc_test.cpp")
+set(run_mpc_sim_file "${PROJECT_SOURCE_DIR}/src/run_mpc_sim.cpp")
 set(run_model_est_file "${PROJECT_SOURCE_DIR}/src/run_model_est.cpp")
 set(run_sim_file "${PROJECT_SOURCE_DIR}/src/run_sim.cpp")
 
@@ -37,7 +37,7 @@ list(REMOVE_ITEM all_SRCS
 	${manual_control_file}
 	${plot_vicon_file}
 	${filter_test_file}
-	${mpc_test_file}
+	${run_mpc_sim_file}
 	${run_model_est_file}
 	${run_sim_file}
 )
@@ -47,12 +47,13 @@ target_link_libraries(manual_control ${CURSES_LIBRARIES})
 
 add_executable(filter_test ${filter_test_file} ${all_SRCS})
 
-add_executable(mpc_test ${mpc_test_file} ${all_SRCS})
-target_link_libraries(mpc_test nlopt)
-set_property(TARGET mpc_test PROPERTY CXX_STANDARD 20)
+add_executable(run_sim ${run_sim_file} ${all_SRCS})
+
+add_executable(run_mpc_sim ${run_mpc_sim_file} ${all_SRCS})
+target_link_libraries(run_mpc_sim ${CERES_LIBRARIES})
 
 add_executable(run_model_est ${run_model_est_file} ${all_SRCS})
 target_link_libraries(run_model_est ${CERES_LIBRARIES})
 
-add_executable(run_sim ${run_sim_file} ${all_SRCS})
+
 
