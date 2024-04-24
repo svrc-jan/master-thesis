@@ -54,18 +54,6 @@ int main(int argc, char const *argv[])
 	Model_sim<M> sim;
 	sim.set_config(sim_config);
 
-    MPC_handler<M> mpc;
-    mpc.set_config(mpc_config);
-    mpc.ctrl.build_problem();
-	mpc.start();
-
-	MHE_handler<M> mhe;
-    mhe.set_config(mhe_config);
-    mhe.estim.build_problem();
-	mhe.start();
-
-
-
 
 	int mpc_u_delay = mpc_config["u_delay"];
 
@@ -79,6 +67,15 @@ int main(int argc, char const *argv[])
 		}
 	}
 
+
+	MPC_handler<M> mpc;
+	mpc.set_config(mpc_config);
+	mpc.ctrl.build_problem();
+
+
+	MHE_handler<M> mhe;
+	mhe.set_config(mhe_config);
+	mhe.estim.build_problem();
 	
 
 	M::o_vec obs;
@@ -115,9 +112,9 @@ int main(int argc, char const *argv[])
 		mpc_p = sim.params + (double)(sim_config["p_disturbance"])*sim.random_params_disturbance();
 		// mpc_p = sim.params;
 
-		mpc.reset();
-		mhe.reset();
+		mpc.start();
 		mhe.sol.p = mpc_p;
+		mhe.start();
 
 		obs = sim.reset();
 		input.setZero();
@@ -134,6 +131,7 @@ int main(int argc, char const *argv[])
             logger << "pos" << t << obs << '\n';
             input = mpc.u_vector(t);
 			logger << "input" << t << input << '\n';
+			logger.flush();
 
 			mhe_logger << "pos" << t << s_est << '\n';
 			mhe_logger << "param" << t << p_est << '\n';
@@ -170,6 +168,9 @@ int main(int argc, char const *argv[])
 		cout << "mhe param" << p_est.transpose() << endl;
 
 		logger.close();
+
+		mhe.end();
+		mpc.end();
 	}
 	
 

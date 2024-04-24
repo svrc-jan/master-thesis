@@ -68,7 +68,7 @@ if __name__ == '__main__':
     
     dt = 0.01
 
-    for data in read_file(sys.argv[1]):
+    for data in tail_file(sys.argv[1]):
 
         if data != '':
             data = data.split(',')
@@ -93,8 +93,10 @@ if __name__ == '__main__':
                 quiv.set_offsets([(x, y)])
                 quiv.set_UVC([0.03*np.cos(a)], [0.03*np.sin(a)])
 
+                print(pos[-1, :])
 
-            plt.pause(dt*0.1)
+
+            # plt.pause(dt*0.5)
 
             
             t = t + 1

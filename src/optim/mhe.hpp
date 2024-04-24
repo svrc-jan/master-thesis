@@ -19,8 +19,8 @@ using json = nlohmann::json;
 template<typename M>
 struct Obs_mhe_res
 {
-	Obs_mhe_res(const double *obs, const double *C) :
-		obs(obs), C(C) {}
+	Obs_mhe_res(const double *obs, const double *C, double *w) :
+		obs(obs), C(C), w(w) {}
 	
 	template <typename T>
 	bool operator()(const T* const s, T* residual) const 
@@ -29,26 +29,28 @@ struct Obs_mhe_res
 		M::output_eq(o, s);
 
 		for (int i = 0; i < M::o_dim; i++) {
-			residual[i] = this->C[i]*(o[i] - this->obs[i]);
+			residual[i] = this->w[0]*this->C[i]*(o[i] - this->obs[i]);
 		}
 
 		return true;
 	}
 
-	static CostFunction* Create(const double *obs, const double *C) {
-		return (new AutoDiffCostFunction<Obs_mhe_res, M::o_dim, M::s_dim>(new Obs_mhe_res(obs, C)));
+	static CostFunction* Create(const double *obs, const double *C, double *w) {
+		return (new AutoDiffCostFunction<Obs_mhe_res, M::o_dim, M::s_dim>(new Obs_mhe_res(obs, C, w)));
 	}
 
 	
+	
 	const double *obs;
 	const double *C; // cost multipliers
+	double *w;
 };
 
 template<typename M>
 struct State_mhe_res
 {
-	State_mhe_res(const double *u, const double dt, const double *C) :
-		u(u), dt(dt), C(C) {}
+	State_mhe_res(const double *u, const double dt, const double *C, double *w) :
+		u(u), dt(dt), C(C), w(w) {}
 	
 	template <typename T>
 	bool operator()(const T* const s_curr, const T* const s_next,
@@ -58,27 +60,28 @@ struct State_mhe_res
 		M::state_eq(ds, s_curr, this->u, p);
 
 		for(int i = 0; i < M::s_dim; i++) {
-			res[i] = this->C[i]*((s_curr[i] - s_next[i])/this->dt + ds[i]);
+			res[i] = this->w[0]*this->C[i]*((s_curr[i] - s_next[i])/this->dt + ds[i]);
 		}
 
 		return true;
 	}
 
 
-	static CostFunction* Create(const double* u, const double dt, const double *C) {
-		return (new AutoDiffCostFunction<State_mhe_res, M::s_dim, M::s_dim, M::s_dim, M::p_dim>(new State_mhe_res(u, dt, C)));
+	static CostFunction* Create(const double* u, const double dt, const double *C, double *w) {
+		return (new AutoDiffCostFunction<State_mhe_res, M::s_dim, M::s_dim, M::s_dim, M::p_dim>(new State_mhe_res(u, dt, C, w)));
 	}
 
 	const double *u;
 	const double dt;
 	const double *C; // cost multiplier
+	double *w;
 };
 
 template<typename M>
 struct State_mhe_prior_res
 {
-	State_mhe_prior_res(const double *s0, const double *u, const double dt, const double *C) :
-		s0(s0), u(u), dt(dt), C(C) {}
+	State_mhe_prior_res(const double *s0, const double *u, const double dt, const double *C, double *w) :
+		s0(s0), u(u), dt(dt), C(C), w(w) {}
 	
 	template <typename T>
 	bool operator()(const T* const s_next,	const T* const p, T* res) const
@@ -87,21 +90,22 @@ struct State_mhe_prior_res
 		M::state_eq(ds, this->s0, this->u, p);
 
 		for(int i = 0; i < M::s_dim; i++) {
-			res[i] = this->C[i]*((this->s0[i] - s_next[i])/this->dt + ds[i]);
+			res[i] = this->w[0]*this->C[i]*((this->s0[i] - s_next[i])/this->dt + ds[i]);
 		}
 
 		return true;
 	}
 
 
-	static CostFunction* Create(const double *s0, const double* u, const double dt, const double *C) {
-		return (new AutoDiffCostFunction<State_mhe_prior_res, M::s_dim, M::s_dim, M::p_dim>(new State_mhe_prior_res(s0, u, dt, C)));
+	static CostFunction* Create(const double *s0, const double* u, const double dt, const double *C, double *w) {
+		return (new AutoDiffCostFunction<State_mhe_prior_res, M::s_dim, M::s_dim, M::p_dim>(new State_mhe_prior_res(s0, u, dt, C, w)));
 	}
 
 	const double *s0;
 	const double *u;
 	const double dt;
 	const double *C; // cost multiplier
+	double *w;
 };
 
 
@@ -155,6 +159,7 @@ public:
 		if (t > this->h-1)
 			t = this->h-1;
 
+		memmove((void *)this->w, (void *)(&(this->w[t])), (this->h - t)*sizeof(double));
 		memmove((void *)this->s[0], (void *)this->s[t], M::s_dim*(this->h+1-t)*sizeof(double));
 		memmove((void *)this->o[0], (void *)this->o[t], M::o_dim*(this->h-t)*sizeof(double));
 		memmove((void *)this->u[0], (void *)this->u[t], M::u_dim*(this->h-t)*sizeof(double));
@@ -162,6 +167,8 @@ public:
 
 	void zero_arr()
 	{
+		memset(this->w, 0, this->h*sizeof(double));
+
 		memset(this->s_arr, 0, M::s_dim*(this->h+1)*sizeof(double));
 		memset(this->o_arr, 0, M::o_dim*this->h*sizeof(double));
 		memset(this->u_arr, 0, M::u_dim*this->h*sizeof(double));
@@ -174,6 +181,7 @@ public:
 		this->problem = new Problem();
 
 		this->p_est = new double[M::p_dim];
+		this->w = new double[this->h];
 
 		this->s_arr = new double[M::s_dim*this->h+1]; // we are gonna use the last estimate as prior so h+1
 		this->o_arr = new double[M::o_dim*this->h];
@@ -199,17 +207,17 @@ public:
 		this->set_model_par_bounds();
 
 		for (int t = 0; t < this->h; t++) {
-			CostFunction *obs_cost_fun = Obs_mhe_res<M>::Create(this->o[t], this->C_o.data());
+			CostFunction *obs_cost_fun = Obs_mhe_res<M>::Create(this->o[t], this->C_o.data(), &(this->w[t]));
 			problem->AddResidualBlock(obs_cost_fun, this->obs_loss, this->s[t+1]); // we have h obs but h+1 states
 		}
 
 		CostFunction *state_prior_cost_fun = State_mhe_prior_res<M>::Create(
-			this->s[0], this->u[0], dt, this->C_s.data());
+			this->s[0], this->u[0], dt, this->C_s.data(), &(this->w[0]));
 		problem->AddResidualBlock(state_prior_cost_fun, this->state_loss, this->s[1], this->p_est);
 
 
 		for (int t = 1; t < this->h; t++) {
-			CostFunction *state_cost_fun = State_mhe_res<M>::Create(this->u[t], this->dt, this->C_s.data());
+			CostFunction *state_cost_fun = State_mhe_res<M>::Create(this->u[t], this->dt, this->C_s.data(), &(this->w[t]));
 			problem->AddResidualBlock(state_cost_fun, this->state_loss, this->s[t], this->s[t+1], this->p_est);
 		}
 
@@ -250,6 +258,8 @@ public:
 
 	double dt;
 	int h; // horizon
+
+	double *w;
 	
 	o_vec C_o;
 	s_vec C_s;
@@ -317,6 +327,9 @@ void MHE_estimator<M>::set_config(json config)
 		this->solver_options.function_tolerance = config["solver_tol"];
 	}
 
+	if (!config["solver_max_time"].is_null()) {
+		this->solver_options.max_solver_time_in_seconds = config["solver_max_time"];
+	}
 
 	if (!config["solver_stdout"].is_null()) {
 		this->solver_options.minimizer_progress_to_stdout = config["solver_stdout"];
@@ -389,14 +402,15 @@ public:
 
 	~MHE_handler()
 	{
-		this->done = true;
-		this->rqst.cv.notify_one();
-		this->hndl_thread.join();
+		this->end();
 	}
 
 	void get_est(s_vec &s_, p_vec &p_, int t) 
 	{
 		unique_lock<mutex> sol_lck(this->sol.mtx);
+		if (t-sol.ts <= 0){
+			return;
+		}
 		s_ = this->sol.s;
 		p_ = this->sol.p;
 		sol_lck.unlock();
@@ -418,20 +432,25 @@ public:
 
 	void start();
 
+	void end()
+	{
+		if (this->done == false) {
+			this->done = true;
+			this->rqst.cv.notify_one();
+			this->hndl_thread.join();
+		}
+	}
 
 	void reset()
 	{
 		unique_lock<mutex> sol_lck(this->sol.mtx);
+		unique_lock<mutex> rqst_lck(this->rqst.mtx);
 		this->sol.ts = -1;
 		this->estim.zero_arr();
-		sol_lck.unlock();
-
-
-		unique_lock<mutex> rqst_lck(this->rqst.mtx);
+		
 		this->rqst.ts = -1;
 		this->rqst.o.clear();
 		this->rqst.u.clear();
-		rqst_lck.unlock();		
 	}
 
 	void set_config(json config);
@@ -441,12 +460,14 @@ public:
 	solution sol;
 	request rqst;
 	
-	atomic<bool> done = false;
+	atomic<bool> done = true;
 	thread hndl_thread;
 
 
 	MHE_estimator<M> estim;
 };
+
+
 
 template<typename M>
 void mhe_handler_func(MHE_handler<M> * hndl)
@@ -457,19 +478,28 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 	while (!hndl->done)
 	{
 		unique_lock<mutex> rqst_lck(hndl->rqst.mtx);
-		if (hndl->rqst.ts <= hndl->sol.ts && !hndl->done) {
+		if (hndl->rqst.ts < hndl->sol.ts && !hndl->done) {
 			hndl->rqst.cv.wait(rqst_lck);
 		}
 		if (hndl->done) {
 			rqst_lck.unlock();
 			break;
 		}
+
+		assert(hndl->rqst.o.size() == hndl->rqst.u.size());
 		time_shift = hndl->rqst.ts - hndl->sol.ts;
-		assert(time_shift == hndl->rqst.o.size() && time_shift == hndl->rqst.u.size());
+		if (time_shift != hndl->rqst.o.size()) {
+			hndl->rqst.o.clear();
+			hndl->rqst.u.clear();
+			hndl->sol.ts = hndl->rqst.ts;
+			rqst_lck.unlock();
+			continue;
+		}
+		
 		hndl->estim.shift_arr(time_shift);
 
 		for (int t = 0; t < time_shift; t++) {
-
+			hndl->estim.w[hndl->h - time_shift + t] = 1;
 			memcpy(hndl->estim.o[hndl->h - time_shift + t], hndl->rqst.o[t].data(), M::o_dim*sizeof(double));
 			memcpy(hndl->estim.u[hndl->h - time_shift + t], hndl->rqst.u[t].data(), M::u_dim*sizeof(double));
 		}
@@ -507,6 +537,7 @@ template<typename M>
 void MHE_handler<M>::start()
 {	
 	this->reset();
+	this->done = false;
 	this->hndl_thread = thread(mhe_handler_func<M>, this);
 }
 

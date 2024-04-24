@@ -39,7 +39,7 @@ list(REMOVE_ITEM all_SRCS
 	${filter_test_file}
 	${run_sim_file}
 	${run_mpc_sim_file}
-	${run_hme_mpc_sim_file}
+	${run_mhe_mpc_sim_file}
 	${run_model_ident_file}
 )
 

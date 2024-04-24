@@ -261,6 +261,14 @@ void MPC_controller<M>::set_config(json config)
 		this->solver_options.function_tolerance = config["solver_tol"];
 	}
 
+	if (!config["solver_max_time"].is_null()) {
+		this->solver_options.max_solver_time_in_seconds = config["solver_max_time"];
+	}
+
+	if (!config["solver_max_time"].is_null()) {
+		this->solver_options.max_solver_time_in_seconds = config["solver_max_time"];
+	}
+
 
 	if (!config["solver_stdout"].is_null()) {
 		this->solver_options.minimizer_progress_to_stdout = config["solver_stdout"];
@@ -329,14 +337,12 @@ public:
 	
 	MPC_handler()
 	{
-
+		this->sol.u_arr ==  nullptr;
 	}
 
 	~MPC_handler()
 	{
-		this->done = true;
-		this->rqst.cv.notify_one();
-		this->hndl_thread.join();
+		this->end();
 
 		delete this->sol.u_arr;
 	}
@@ -355,20 +361,25 @@ public:
 
 	void start();
 
+	void end()
+	{
+		if (this->done == false) {
+			this->done = true;
+			this->rqst.cv.notify_one();
+			this->hndl_thread.join();
+		}
+	}
+
 	void reset()
 	{
-
+		unique_lock<mutex> sol_lck(this->sol.mtx);
 		unique_lock<mutex> rqst_lck(this->rqst.mtx);
 		this->rqst.ts = -1;
-		rqst_lck.unlock();
 
-		unique_lock<mutex> sol_lck(this->sol.mtx);
+		
 		this->sol.ts = -1;
 		memset(this->sol.u_arr, 0, M::u_dim*this->h*sizeof(double));
 		this->ctrl.zero_u_arr();
-		sol_lck.unlock();
-
-
 	}
 
 	u_vec u_vector(int ts) 
@@ -402,7 +413,7 @@ public:
 	solution sol;
 	request rqst;
 	
-	atomic<bool> done = false;
+	atomic<bool> done = true;
 	thread hndl_thread;
 };
 
@@ -422,14 +433,21 @@ void mpc_handler_func(MPC_handler<M> * hndl)
 		if (hndl->rqst.ts <= hndl->sol.ts && !hndl->done) {
 			hndl->rqst.cv.wait(rqst_lck);
 		}
+		if (hndl->done) {
+			rqst_lck.unlock();
+			break;
+		}
+		if (hndl->sol.ts == -1 && hndl->rqst.ts == -1) {
+			rqst_lck.unlock();
+			continue;
+		};
+
 		ts = hndl->rqst.ts;
 		s0 = hndl->rqst.s0;
 		s_tar = hndl->rqst.s_tar;
 		p = hndl->rqst.p;
 
 		rqst_lck.unlock();
-
-		if (hndl->done) break;
 
 		// hndl->ctrl.shift_u_arr(ts - hndl->sol.ts);
 		auto start = chrono::high_resolution_clock::now();
@@ -453,7 +471,8 @@ void mpc_handler_func(MPC_handler<M> * hndl)
 template<typename M>
 void MPC_handler<M>::start()
 {
-	this->sol.u_arr = new double[M::u_dim*this->h];
+	if (this->sol.u_arr ==  nullptr)
+		this->sol.u_arr = new double[M::u_dim*this->h];
 	
 	
 	this->sol.u.clear();
@@ -462,6 +481,7 @@ void MPC_handler<M>::start()
 	}
 
 	this->reset();
+	this->done = false;
 	this->hndl_thread = thread(mpc_handler_func<M>, this);
 }
 

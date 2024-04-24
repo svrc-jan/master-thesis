@@ -123,7 +123,7 @@ int main(int argc, char const *argv[])
 	}
 	
 
-	// cout << "delay est" << model_delay << endl;
+	cout << "delay est" << model_delay << endl;
 
 	if (!config["clear_log_est_dir"].is_null()) {
 		if ((bool)config["clear_log_est_dir"]) {
