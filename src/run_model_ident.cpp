@@ -106,9 +106,8 @@ int main(int argc, char const *argv[])
 
 		for (int d = 0; d < u_delay_max; d++) {
 			stat = model_ident.calculate_state_equation_corr(model_ident.param_est, dt, d);
-			if (d == model_delay) {
-				 cout << "state eq corr: " << stat.transpose() << endl;
-			}
+			cout << "delay: " << d << ", state eq corr: " << stat.transpose() << endl;
+			
 
 			if (stat.mean() > best_stat) {
 				best_stat = stat.mean();

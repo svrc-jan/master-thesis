@@ -446,6 +446,7 @@ public:
 		unique_lock<mutex> sol_lck(this->sol.mtx);
 		unique_lock<mutex> rqst_lck(this->rqst.mtx);
 		this->sol.ts = -1;
+		this->sol.s.setZero();
 		this->estim.zero_arr();
 		
 		this->rqst.ts = -1;
