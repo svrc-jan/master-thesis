@@ -33,7 +33,8 @@ int main(int argc, char const *argv[])
 
 	config = get_json_config(config_file);
 
-	typedef Innertia_drone_model M;
+	// typedef Innertia_drone_model M;
+	typedef Simple_drone_model M;
 
 	Model_ident<M> model_ident;
 	model_ident.set_config(config);

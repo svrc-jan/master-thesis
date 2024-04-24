@@ -1,0 +1,24 @@
+{
+	"dt" : 0.02,
+	"u_delay": 0,
+	"u_delay_max": 200,
+	"C_o" : [
+		5, 5, 5, 5
+	],
+	"C_s" : [
+		1, 1, 1, 1
+	],
+	"C_prior" : [
+		0.001, 0.001, 0.001, 0.001
+	],
+	
+	"p_lb" : [1, 1, 0.5, -0.3],
+	"p_ub" : [10, 10, 10, 0.3],
+
+	"obs_loss_s" : 10,
+	"state_loss_s" : 10,
+
+	"max_models" : 100,
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/sim_mpc",
+	"clear_log_est_dir" : true
+}

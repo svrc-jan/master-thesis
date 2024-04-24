@@ -1,0 +1,23 @@
+{
+	"dt" : 0.02,
+	"h" : 20,
+	"u_delay" : 50,
+	
+	"C_s" : [
+		0.1, 0.1, 0.1, 0.1
+	],
+
+	"C_s_end" : [
+		10, 10, 10, 10
+	],
+
+	"C_u" : [
+		0.5, 0.5, 0.5, 0.5
+	],
+
+	"solver_tol" : 1e-3,
+	"solver_max_time" : 0.01,
+	"solver_stdout" : false,
+	"solver_threads" : 5,
+	"solver_linear_solver_type" : "sparse_cholesky"
+}

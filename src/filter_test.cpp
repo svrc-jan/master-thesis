@@ -13,7 +13,7 @@ int main(int argc, char const *argv[])
 {
 	Vicon_filter *filt;
 
-	if (argc == 2) {
+	if (argc <= 2) {
 		filt = new Vicon_filter;
 	}
 	else if (argc == 3) {
@@ -22,12 +22,20 @@ int main(int argc, char const *argv[])
 	else if (argc == 4) {
 		filt = new Vicon_filter(atof(argv[2]), atof(argv[3]));
 	}
-	else {
-		cerr << "File name missing!" << endl;
-		return 1;
+	else if (argc == 5) {
+		filt = new Vicon_filter(atof(argv[2]), atof(argv[3]), atof(argv[4]));
 	}
+	// else {
+	// 	cerr << "File name missing!" << endl;
+	// 	return 1;
+	// }
 
-	string filename(argv[1]);
+	string filename;
+	if (argc > 1) 
+		filename = string(argv[1]);
+
+	else
+		filename = "/home/jsv/CVUT/master-thesis/data/2f";
 
 	fstream fin(filename, ios::in);
 	if (!fin.is_open()) {

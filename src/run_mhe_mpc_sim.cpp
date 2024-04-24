@@ -29,7 +29,8 @@ string default_mhe_config = "/home/jsv/CVUT/master-thesis/config/mhe.json";
 
 int main(int argc, char const *argv[])
 {
-	typedef Innertia_drone_model M;
+	// typedef Innertia_drone_model M;
+	typedef Simple_drone_model M;
 
 	json sim_config, mpc_config, mhe_config;
     string sim_config_file = default_sim_config;

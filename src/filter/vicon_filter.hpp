@@ -16,6 +16,7 @@ private:
 	int hold = -1; // -1 : uninit, 0...n : n steps hold (detecting incorect read)
 	pos_t curr_pos;
 
+
 public:
 	Vicon_filter(double thr=5, double a_s=1, double v_s=1);
 	~Vicon_filter();

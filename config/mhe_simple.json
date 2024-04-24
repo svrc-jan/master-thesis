@@ -1,0 +1,25 @@
+{
+	"dt" : 0.02,
+	"h" : 30,
+	
+	"C_o" : [
+		2, 2, 2, 2
+	],
+	"C_s" : [
+		1, 1, 1, 1
+	],
+	"C_prior" : [
+		1, 1, 1, 1
+	],
+
+	"p_lb" : [1, 1, 0.5, -0.3],
+	"p_ub" : [10, 10, 10, 0.3],
+
+	"obs_loss_s" : 1,
+	"state_loss_s" : 15,
+
+	"solver_max_time" : 0.01,
+	"solver_stdout" : false,
+	"solver_threads" : 2,
+	"solver_linear_solver_type" : "sparse_cholesky"
+}

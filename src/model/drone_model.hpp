@@ -310,8 +310,8 @@ typename M::s_vec Base_model::predict_state(
 template<typename Tds, typename Ts, typename Tu, typename Tp>
 bool Simple_drone_model::state_eq(Tds *ds, const Ts *s, const Tu *u, const Tp *p)
 {
-	ds[0] = Tds(p[0]*(cos(s[2]+p[3])*u[1] - sin(s[2]+p[3])*u[0]));
-	ds[1] = Tds(p[0]*(sin(s[2]+p[3])*u[1] + cos(s[2]+p[3])*u[0]));
+	ds[0] = Tds(p[0]*(cos(s[3]+p[3])*u[1] - sin(s[2]+p[3])*u[0]));
+	ds[1] = Tds(p[0]*(sin(s[3]+p[3])*u[1] + cos(s[2]+p[3])*u[0]));
 	ds[2] = Tds(p[1]*u[3]);
 	ds[3] = Tds(p[2]*u[2]);
 
