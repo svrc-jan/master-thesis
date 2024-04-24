@@ -20,7 +20,7 @@ using json = nlohmann::json;
 template<typename M>
 struct Target_term {
 	using Target_cost_fun = 
-		DynamicAutoDiffCostFunction<Target_term, 8>;
+		DynamicAutoDiffCostFunction<Target_term, M::s_dim>;
 
 	Target_term(double *s0, double *s_tar, double *p, 
 		const int h, const double dt, const double *C) :

@@ -72,15 +72,15 @@ public:
 		delete this->obs_loss;
 		this->obs_loss = nullptr;
 
-		delete this->s_arr;
-		this->s_arr = nullptr;
-		delete this->o_arr;
-		this->o_arr = nullptr;
-		delete this->u_arr;
-		this->u_arr = nullptr;
+		// delete this->s_arr;
+		// this->s_arr = nullptr;
+		// // delete this->o_arr; // possible memory leak
+		// this->o_arr = nullptr;
+		// delete this->u_arr;
+		// this->u_arr = nullptr;
 
-		delete this->p_est;
-		this->p_est = nullptr;
+		// delete this->p_est;
+		// this->p_est = nullptr;
 
 		delete this->problem;
 		this->problem = nullptr;
@@ -103,8 +103,6 @@ public:
 
 	void build_problem()
 	{
-		this->delete_all(); // nothing happens for fresh, nullptr
-
 		this->problem = new Problem();
 
 		this->p_est = new double[M::p_dim];
@@ -294,6 +292,7 @@ public:
 		this->rqst.ts = ts;
 
 		int arr_idx = ts % this->h; // circular array to avoid moving memory every step
+		
 
 		memcpy(this->o[arr_idx], o_.data(), M::o_dim*sizeof(double));
 		memcpy(this->u[arr_idx], u_.data(), M::u_dim*sizeof(double));
@@ -352,7 +351,8 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 {
 	cerr << "starting mhe handler thread" << endl;
 
-	int ts;
+	int ts, shift;
+	double ds[M::s_dim];
 	while (!hndl->done)
 	{
 		unique_lock<mutex> rqst_lck(hndl->rqst.mtx);
@@ -369,16 +369,25 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 		// [---*****]
         // [*****---]
 
-		memcpy(hndl->estim.o[hndl->h - arr_idx], hndl->o[0], arr_idx*sizeof(double));
-		memcpy(hndl->estim.o[0], hndl->o[arr_idx], (hndl->h - arr_idx)*sizeof(double));
+		memcpy(hndl->estim.o[hndl->h - arr_idx], hndl->o[0], M::o_dim*arr_idx*sizeof(double));
+		memcpy(hndl->estim.o[0], hndl->o[arr_idx], M::o_dim*(hndl->h - arr_idx)*sizeof(double));
 
-		memcpy(hndl->estim.u[hndl->h - arr_idx], hndl->u[0], arr_idx*sizeof(double));
-		memcpy(hndl->estim.u[0], hndl->u[arr_idx], (hndl->h - arr_idx)*sizeof(double));
+		memcpy(hndl->estim.u[hndl->h - arr_idx], hndl->u[0], M::u_dim*arr_idx*sizeof(double));
+		memcpy(hndl->estim.u[0], hndl->u[arr_idx], M::u_dim*(hndl->h - arr_idx)*sizeof(double));
 
 		hndl->estim.p_prior = hndl->sol.p;
 		rqst_lck.unlock();
 
-		
+		shift = ts - hndl->sol.ts;
+
+		hndl->estim.shift_s_arr(min(shift, hndl->h));
+
+		for (int t = max(0, hndl->h - shift); t < hndl->h; t++) {
+			M::state_eq(ds, hndl->estim.s[t], hndl->estim.u[t], hndl->estim.p_prior.data());
+			for (int i = 0; i < M::s_dim; i++) {
+				hndl->estim.s[t+1][i] = hndl->estim.s[t][i] + ds[i]*hndl->estim.dt;
+			}
+		}
 
 		// hndl->ctrl.shift_u_arr(ts - hndl->sol.ts);
 		auto start = chrono::high_resolution_clock::now();

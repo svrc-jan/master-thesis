@@ -136,6 +136,8 @@ int main(int argc, char const *argv[])
 			logger << "input" << t << input.data << '\n';
 
 			mhe_logger << "pos" << t << s_est << '\n';
+			mhe_logger << "param" << t << p_est << '\n';
+
 
 			mhe.post_request(t, pos, input);
 

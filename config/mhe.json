@@ -1,23 +1,23 @@
 {
 	"dt" : 0.02,
-	"h" : 15,
+	"h" : 30,
 	"u_delay" : 0,
 	
 	"C_o" : [
-		10, 10, 10, 10
+		1, 1, 1, 1
 	],
 	"C_s" : [
-		0, 0, 0, 0,
-		0, 0, 0, 0
+		100, 100, 100, 100,
+		1, 1, 1, 1
 	],
 	"C_prior" : [
-		1, 1, 1, 1,
-		1, 1, 1 
+		0, 0, 0, 0,
+		0, 0, 0 
 	],
 
-	"solver_tol" : 1e-3,
-	"solver_max_iter" : 5,
+	"solver_tol" : 1e-5,
+	"solver_max_iter" : 10,
 	"solver_stdout" : false,
-	"solver_threads" : 1,
+	"solver_threads" : 4,
 	"solver_linear_solver_type" : "sparse_cholesky"
 }
