@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <iostream>
 #include <cmath>
+#include <list>
+#include <string>
 
 #include <eigen3/Eigen/Dense>
 #include <vicon/vicon_client.h>
@@ -172,6 +174,11 @@ public:
 	// action upper and lower bounds
 	static constexpr double u_lb[] = {};
 	static constexpr double u_ub[] = {};
+
+	template<typename M>
+	static typename M::s_vec predict_state(
+		const typename M::s_vec s0, const list<typename M::u_vec> u_list, 
+		const typename M::p_vec p, double dt);
 };
 
 class Simple_drone_model : Base_model
@@ -216,6 +223,8 @@ public:
 	template<typename To, typename Ts>
 	static bool output_eq(To *o, const Ts *s);
 
+	static s_vec predict_state(const s_vec s0, const list<u_vec> u_list, const p_vec p, double dt) 
+		{ return Base_model::predict_state<Simple_drone_model>(s0, u_list, p, dt); };
 };
 
 class Innertia_drone_model : Base_model
@@ -261,8 +270,30 @@ public:
 	// action upper and lower bounds
 	static constexpr double u_lb[] = {-1, -1, -1, -1};
 	static constexpr double u_ub[] = {1,  1,  1,  1};
+
+	static s_vec predict_state(const s_vec s0, const list<u_vec> u_list, const p_vec p, double dt) 
+		{ return Base_model::predict_state<Innertia_drone_model>(s0, u_list, p, dt); };
 };
 
+
+template<typename M>
+typename M::s_vec Base_model::predict_state(
+	const typename M::s_vec s0, const list<typename M::u_vec> u_list, 
+	const typename M::p_vec p, double dt)
+{
+	typename M::s_vec ds;
+	typename M::s_vec s;
+	typename M::u_vec u;
+	s = s0;
+
+	for (auto u_it = u_list.begin(); u_it != u_list.end(); ++u_it) {
+		u = *(u_it);
+		M::state_eq(ds.data(), s.data(), u.data(), p.data());
+		s = s + dt*ds;
+	}
+
+	return s;
+}
 
 /* simple drone mode:
  * s = (x, y, z, a)

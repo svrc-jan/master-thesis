@@ -11,10 +11,9 @@
 #include <eigen3/Eigen/Core>
 #include <ceres/ceres.h>
 
-#include "model/model_sim.hpp"
-#include "optim/model_est.hpp"
-#include "logging/parser.hpp"
-#include "logging/logger.hpp"
+#include "optim/model_ident.hpp"
+#include "utils/parser.hpp"
+#include "utils/logger.hpp"
 #include "utils/json.hpp"
 
 using namespace std;
@@ -23,36 +22,24 @@ using json = nlohmann::json;
 
 string default_config = "/home/jsv/CVUT/master-thesis/config/est_sim.json";
 
-json get_config(string file_name)
-{
-	if (!file_exists(file_name)) {
-			cerr << "config file not found" << endl;
-			exit(1);
-		}
-
-	ifstream config_file(file_name);
-	json config = json::parse(config_file);
-
-	return config;
-}
 
 int main(int argc, char const *argv[])
 {
-
+	string config_file = default_config;
 	json config;
 	if (argc > 1)
-		config = get_config(argv[1]);
+		config_file = string(argv[1]);
 
-	else
-		config = get_config(default_config);
+
+	config = get_json_config(config_file);
 
 	typedef Innertia_drone_model M;
 
-	Model_est<M> model_est;
-	model_est.set_config(config);
+	Model_ident<M> model_ident;
+	model_ident.set_config(config);
 	
-	Model_est<M>::o_mat pos;
-	Model_est<M>::u_mat input;
+	Model_ident<M>::o_mat pos;
+	Model_ident<M>::u_mat input;
 	
 	double dt = config["dt"];	
 	int u_delay = config["u_delay"];
@@ -82,7 +69,7 @@ int main(int argc, char const *argv[])
 		input.conservativeResize(pos.rows(), input.cols());
 		Parser::fill_matrix<M::u_dim>(input, data["input"]);
 
-		model_est.add_trajectory(pos, input);
+		model_ident.add_trajectory(pos, input);
 	}
 
 	
@@ -96,8 +83,8 @@ int main(int argc, char const *argv[])
 
 	ceres::Solver::Summary summary;
 
-	// model_est.build_problem(dt, u_delay);
-	// model_est.solve(options, &summary);
+	// model_ident.build_problem(dt, u_delay);
+	// model_ident.solve(options, &summary);
 
 	// cout << summary.BriefReport() << endl;
 	
@@ -109,15 +96,15 @@ int main(int argc, char const *argv[])
 
 	while (true) {
 		cout << "model delay " << model_delay << endl;
-		model_est.build_problem(dt, model_delay);
-		model_est.solve(options, &summary);
+		model_ident.build_problem(dt, model_delay);
+		model_ident.solve(options, &summary);
 		cout << summary.BriefReport() << endl;
 
 		best_stat = -INFINITY;
 		best_delay = -1;
 
 		for (int d = 0; d < u_delay_max; d++) {
-			stat = model_est.calculate_state_equation_corr(model_est.param_est, dt, d);
+			stat = model_ident.calculate_state_equation_corr(model_ident.param_est, dt, d);
 			if (d == model_delay) {
 				 cout << "state eq corr: " << stat.transpose() << endl;
 			}
@@ -151,13 +138,13 @@ int main(int argc, char const *argv[])
 
 		M::o_vec o;
 		logger << "delay" << model_delay << '\n';
-		logger << "params" << model_est.param_est << '\n';
-		for (int t = 0; t < model_est.state_est[i]->rows(); t++) {
-			M::output_eq(o.data(), model_est.state_est[i]->row(t).data());
+		logger << "params" << model_ident.param_est << '\n';
+		for (int t = 0; t < model_ident.state_est[i]->rows(); t++) {
+			M::output_eq(o.data(), model_ident.state_est[i]->row(t).data());
 			logger << "pos" << t << o << '\n';
 		}
 	}
 
-	cout << "par est " << model_est.param_est.transpose() << endl;
+	cout << "par est " << model_ident.param_est.transpose() << endl;
 	return 0;
 }

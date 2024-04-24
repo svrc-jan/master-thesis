@@ -13,9 +13,9 @@
 using namespace  ceres;
 
 template<typename M>
-struct ObsRes
+struct Obs_res
 {
-	ObsRes(const double *obs, const double *C) :
+	Obs_res(const double *obs, const double *C) :
 		obs(obs), C(C) {}
 	
 	template <typename T>
@@ -32,7 +32,7 @@ struct ObsRes
 	}
 
 	static CostFunction* Create(const double *obs, const double *C) {
-		return (new AutoDiffCostFunction<ObsRes, M::o_dim, M::s_dim>(new ObsRes(obs, C)));
+		return (new AutoDiffCostFunction<Obs_res, M::o_dim, M::s_dim>(new Obs_res(obs, C)));
 	}
 
 	const double *obs;
@@ -40,9 +40,9 @@ struct ObsRes
 };
 
 template<typename M>
-struct StateRes
+struct State_res
 {
-	StateRes(const double *u, const double dt, const double *C) :
+	State_res(const double *u, const double dt, const double *C) :
 		u(u), dt(dt), C(C) {}
 	
 	template <typename T>
@@ -61,7 +61,7 @@ struct StateRes
 
 
 	static CostFunction* Create(const double* u, const double dt, const double *C) {
-		return (new AutoDiffCostFunction<StateRes, M::s_dim, M::s_dim, M::s_dim, M::p_dim>(new StateRes(u, dt, C)));
+		return (new AutoDiffCostFunction<State_res, M::s_dim, M::s_dim, M::s_dim, M::p_dim>(new State_res(u, dt, C)));
 	}
 
 	const double *u;
@@ -104,9 +104,9 @@ struct ParamStateRes
 
 
 template<int S>
-struct Prior
+struct Prior_res
 {
-	Prior(const double *x_p, const double *C) :
+	Prior_res(const double *x_p, const double *C) :
 		x_p(x_p), C(C) {}
 	
 	template <typename T>
@@ -121,7 +121,7 @@ struct Prior
 
 	static CostFunction* Create(const double *x_p, const double *C)
 	{
-		return (new AutoDiffCostFunction<Prior<S>, S, S>(new Prior<S>(x_p, C)));
+		return (new AutoDiffCostFunction<Prior_res<S>, S, S>(new Prior_res<S>(x_p, C)));
 	}
 
 	const double *x_p;
@@ -130,7 +130,7 @@ struct Prior
 
 
 template<typename M>
-class Model_est {
+class Model_ident {
 public:
 
 	typedef typename M::s_vec s_vec;
@@ -142,7 +142,7 @@ public:
 	typedef Eigen::Matrix<double, -1, M::o_dim, Eigen::RowMajor> o_mat;
 	typedef Eigen::Matrix<double, -1, M::u_dim, Eigen::RowMajor> u_mat;
 
-	Model_est()
+	Model_ident()
 	{
 		this->C_o.setZero();
 		this->C_s.setZero();
@@ -159,7 +159,7 @@ public:
 		this->param_prior = (this->param_lb + this->param_ub)/2;
 	}
 
-	~Model_est()
+	~Model_ident()
 	{
 		
 		this->clear_trajectories();
@@ -171,21 +171,21 @@ public:
 
 	void add_obs(double *est, const double *obs)
 	{
-		CostFunction *cost_fun = ObsRes<M>::Create(obs, this->C_o.data());		
+		CostFunction *cost_fun = Obs_res<M>::Create(obs, this->C_o.data());		
 		problem->AddResidualBlock(cost_fun, this->obs_loss, est);
 	}
 
 	void add_state(double *curr_state, double *next_state, double *model_par,
 		const double *input, double dt)
 	{
-		CostFunction *cost_fun = StateRes<M>::Create(input, dt, this->C_s.data());
+		CostFunction *cost_fun = State_res<M>::Create(input, dt, this->C_s.data());
 		problem->AddResidualBlock(cost_fun, this->state_loss, curr_state, next_state, model_par);
 	}
 
 	template<int S>
 	void add_prior(double *x, const double *x_p, const double *C)
 	{
-		CostFunction *cost_fun = Prior<S>::Create(x_p, C);
+		CostFunction *cost_fun = Prior_res<S>::Create(x_p, C);
 		problem->AddResidualBlock(cost_fun, nullptr, x);
 	}
 
@@ -418,8 +418,8 @@ public:
 
 };
 
-template<class M>
-void Model_est<M>::set_config(json config)
+template<typename M>
+void Model_ident<M>::set_config(json config)
 {
 	if (!config["p_lb"].is_null()) {
 		this->param_lb = array_to_vector(config["p_lb"]);

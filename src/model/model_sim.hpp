@@ -12,7 +12,7 @@ using namespace std;
 
 using json = nlohmann::json;
 
-template<class M>
+template<typename M>
 class Model_sim {
 public:
 	typedef typename M::s_vec s_vec;
@@ -22,13 +22,6 @@ public:
 
 	Model_sim(int seed=0)
 	{
-		if (seed != 0) {
-			this->rng = mt19937(random_device()());
-		}
-		else {
-			this->rng = mt19937(seed);
-		}
-		
 		this->uniform_dist = uniform_real_distribution<double>(0.0, 1.0);
 		this->normal_dist = normal_distribution<double>(0.0, 1.0);
 		this->uniform_int_dist = uniform_int_distribution<>(-1, 1);
@@ -70,13 +63,13 @@ private:
 	uniform_real_distribution<double> uniform_dist;
 	normal_distribution<double> normal_dist;
 	uniform_int_distribution<> uniform_int_dist;
-	mt19937 rng;
+	random_device rng;
 
 	list<u_vec> u_buffer;
 };
 
 
-template<class M>
+template<typename M>
 typename Model_sim<M>::o_vec Model_sim<M>::obs()
 {
 	o_vec obs;
@@ -97,7 +90,7 @@ typename Model_sim<M>::o_vec Model_sim<M>::obs()
 	return obs;
 }
 
-template<class M>
+template<typename M>
 typename Model_sim<M>::o_vec Model_sim<M>::reset()
 {
 	this->u_buffer.clear();
@@ -108,7 +101,7 @@ typename Model_sim<M>::o_vec Model_sim<M>::reset()
 	return this->obs();
 }
 
-template<class M>
+template<typename M>
 typename Model_sim<M>::o_vec Model_sim<M>::step(u_vec input)
 {
 	u_vec u;
@@ -153,7 +146,7 @@ typename Model_sim<M>::o_vec Model_sim<M>::step(u_vec input)
 	return this->obs();
 }
 
-template<class M>
+template<typename M>
 typename Model_sim<M>::p_vec Model_sim<M>::random_params_disturbance()
 {
 	p_vec params;
@@ -165,7 +158,7 @@ typename Model_sim<M>::p_vec Model_sim<M>::random_params_disturbance()
 	return params;
 }
 
-template<class M>
+template<typename M>
 typename Model_sim<M>::p_vec Model_sim<M>::random_params()
 {
 	p_vec params;
@@ -176,7 +169,7 @@ typename Model_sim<M>::p_vec Model_sim<M>::random_params()
 }
 
 
-template<class M>
+template<typename M>
 typename Model_sim<M>::u_vec Model_sim<M>::random_input()
 {
 	u_vec input;
@@ -188,7 +181,7 @@ typename Model_sim<M>::u_vec Model_sim<M>::random_input()
 	return input;
 }
 
-template<class M>
+template<typename M>
 void Model_sim<M>::set_config(json config)
 {
 	this->dt = config["dt"];

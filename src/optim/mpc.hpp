@@ -1,6 +1,13 @@
+#include <vector>
+#include <list>
+#include <atomic>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
 #include <eigen3/Eigen/Dense>
 #include <ceres/ceres.h>
-#include <vector>
+
 
 #include "utils/aux.hpp"
 #include "utils/json.hpp"
@@ -94,11 +101,12 @@ struct Action_term
 };
 
 
-template<class M>
+
+
+template<typename M>
 class MPC_controller
 {
 public:
-
 	typedef typename M::s_vec s_vec;
 	typedef typename M::u_vec u_vec;
 	typedef typename M::o_vec o_vec;
@@ -107,7 +115,8 @@ public:
 	MPC_controller()
 	{
 		this->C_s.setZero();
-		this->C_s.setZero();
+		this->C_s_end.setZero();
+		this->C_u.setZero();
 
 		this->s0.setZero();
 		this->s_tar.setZero();
@@ -123,9 +132,14 @@ public:
 		delete this->u_arr;
 		delete this->problem;
 	}
-	void shift_u_arr()
+	void shift_u_arr(int t)
 	{
-		memmove(this->u[0], this->u[1], M::u_dim*(this->h-1)*sizeof(double));
+		memmove((void *)this->u[0], (void *)this->u[t], M::u_dim*(this->h-t)*sizeof(double));
+	}
+
+	void zero_u_arr()
+	{
+		memset(this->u_arr, 0, M::u_dim*this->h*sizeof(double));
 	}
 
 	void build_problem()
@@ -135,7 +149,7 @@ public:
 
 
 		this->u_arr = new double[M::u_dim*this->h];
-		memset(this->u_arr, 0, M::u_dim*this->h*sizeof(double));
+		this->zero_u_arr();
 		
 		this->u.clear();
 		for (int t = 0; t < this->h; t++) {
@@ -178,7 +192,7 @@ public:
 
 	}
 
-	void solve_problem(s_vec s0_, s_vec s_tar_, p_vec p_)
+	void solve_problem(s_vec &s0_, s_vec &s_tar_, p_vec &p_)
 	{
 		this->s0 = s0_;
 		this->s_tar = s_tar_;
@@ -220,7 +234,7 @@ public:
 };
 
 
-template<class M>
+template<typename M>
 void MPC_controller<M>::set_config(json config)
 {
 	this->dt = config["dt"];
@@ -279,4 +293,179 @@ void MPC_controller<M>::set_config(json config)
 			cerr << "MPC using sparse schur" << endl;
 		}
 	}
+}
+
+
+template<typename M>
+class MPC_handler
+{
+public:
+	typedef typename M::s_vec s_vec;
+	typedef typename M::u_vec u_vec;
+	typedef typename M::o_vec o_vec;
+	typedef typename M::p_vec p_vec;
+
+	struct request
+	{
+		int ts; // timestep
+
+		s_vec s0;
+		s_vec s_tar;
+		p_vec p;
+
+		mutex mtx;
+		condition_variable cv;
+	};
+
+	struct solution
+	{
+		int ts; // timestep
+
+		double *u_arr = nullptr;
+		vector<double *> u;
+		
+		mutex mtx;
+	};
+	
+	MPC_handler()
+	{
+
+	}
+
+	~MPC_handler()
+	{
+		this->done = true;
+		this->rqst.cv.notify_one();
+		this->hndl_thread.join();
+
+		delete this->sol.u_arr;
+	}
+
+	void post_request(int ts, s_vec s0, s_vec s_tar, p_vec p)
+	{
+		unique_lock<mutex> rqst_lck(this->rqst.mtx);
+		this->rqst.ts = ts;
+		this->rqst.s0 = s0;
+		this->rqst.s_tar = s_tar;
+		this->rqst.p = p;
+		
+		this->rqst.cv.notify_one();
+		rqst_lck.unlock();
+	}
+
+	void start();
+
+	void reset()
+	{
+
+		unique_lock<mutex> rqst_lck(this->rqst.mtx);
+		this->rqst.ts = -1;
+		rqst_lck.unlock();
+
+		unique_lock<mutex> sol_lck(this->sol.mtx);
+		this->sol.ts = -1;
+		memset(this->sol.u_arr, 0, M::u_dim*this->h*sizeof(double));
+		this->ctrl.zero_u_arr();
+		sol_lck.unlock();
+
+
+	}
+
+	u_vec u_vector(int ts) 
+	{
+		u_vec result;
+		
+		unique_lock<mutex> sol_lck(this->sol.mtx);
+		int idx = ts - this->sol.ts;
+		if (idx < 0) {
+			result = array_to_vector<M::u_dim>(this->sol.u[0]);
+		}
+		else if (idx >= this->h) {
+			result = array_to_vector<M::u_dim>(this->sol.u[this->h-1]);
+		}
+		else {
+			result = array_to_vector<M::u_dim>(this->sol.u[idx]);
+		}
+		cout << "mpc lag " << idx << " ";
+		sol_lck.unlock();
+		return result;
+	}
+
+	void set_config(json config);
+
+	int h;
+	int u_delay = 0;
+	MPC_controller<M> ctrl;
+	
+	solution sol;
+	request rqst;
+	
+	atomic<bool> done = false;
+	thread hndl_thread;
+};
+
+template<typename M>
+void mpc_handler_func(MPC_handler<M> * hndl)
+{
+	cerr << "starting mpc handler thread" << endl;
+
+	int ts;
+	typename M::s_vec s0;
+	typename M::s_vec s_tar;
+	typename M::p_vec p;
+
+	while (!hndl->done)
+	{
+		unique_lock<mutex> rqst_lck(hndl->rqst.mtx);
+		if (hndl->rqst.ts <= hndl->sol.ts && !hndl->done) {
+			hndl->rqst.cv.wait(rqst_lck);
+		}
+		ts = hndl->rqst.ts;
+		s0 = hndl->rqst.s0;
+		s_tar = hndl->rqst.s_tar;
+		p = hndl->rqst.p;
+
+		rqst_lck.unlock();
+
+		if (hndl->done) break;
+
+		// hndl->ctrl.shift_u_arr(ts - hndl->sol.ts);
+		auto start = chrono::high_resolution_clock::now();
+		hndl->ctrl.solve_problem(s0, s_tar, p);
+		auto end = chrono::high_resolution_clock::now();
+		
+		unique_lock<mutex> sol_lck(hndl->sol.mtx);
+
+		memcpy(hndl->sol.u_arr, hndl->ctrl.u_arr, M::u_dim*hndl->h*sizeof(double));
+		hndl->sol.ts = ts;
+
+		sol_lck.unlock();
+
+		auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+	}
+
+
+	cerr << "ending mpc handler thread" << endl;
+}
+
+template<typename M>
+void MPC_handler<M>::start()
+{
+	this->sol.u_arr = new double[M::u_dim*this->h];
+	
+	
+	this->sol.u.clear();
+	for (int t = 0; t < this->h; t++) {
+		this->sol.u.push_back(this->sol.u_arr + t*M::u_dim);
+	}
+
+	this->reset();
+	this->hndl_thread = thread(mpc_handler_func<M>, this);
+}
+
+template<typename M>
+void MPC_handler<M>::set_config(json config)
+{
+	this->ctrl.set_config(config);
+	this->h = config["h"];
 }

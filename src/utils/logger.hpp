@@ -25,7 +25,7 @@ ofstream & operator<<(ofstream &s, const Eigen::MatrixBase<Derived> &m)
 class Logger
 {
 public:
-	Logger(string file_name, int prec=3, char sep=',') :
+	Logger(string file_name, int prec=4, char sep=',') :
 		sep(sep)
 	{
 		this->file.open(file_name);

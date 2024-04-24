@@ -132,4 +132,49 @@ json get_json_config(string file_name)
 	return config;
 }
 
+template <int S>
+class Rolling_matrix
+{
+    void resize(int min_h_, int max_h_)
+    {
+        assert(min_h_ < max_h_);
+        this->min_h = min_h_;
+        this->max_h = max_h_;
+        mat.conservativeResize(max_h_, S);
+    }
+
+    void push(const Eigen::Vector<double, S> &vec)
+    {
+        if (this->curr_idx >= this->max_h) {
+            memmove(this->mat.data(), 
+                (void  *)(this->mat.data()) + S*sizeof(double)*(this->max_h - this->min_h),
+                S*sizeof(double)*this->min_h);
+            
+            this->curr_idx = this->min_h;
+        }
+        this->curr_idx++;
+        this->mat.row(this->curr_idx) = vec;
+    }
+
+    Eigen::Vector<double, S> operator[](int idx)
+    {
+        Eigen::Vector<double, S> rv;
+        if (idx >= 0) {
+            rv = this->mat.row(this->curr_idx - this->min_h + idx);
+        }
+        else {
+            rv = this->mat.row(this->curr_idx + idx);
+        }
+
+        return rv;
+    }
+
+    Eigen::Matrix<double, -1, S, Eigen::RowMajor> mat;
+
+    int curr_idx = 0;
+    int min_h = 0;
+    int max_h = 0;
+};
+
+
 #endif

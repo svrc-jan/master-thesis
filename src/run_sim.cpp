@@ -8,8 +8,8 @@
 
 #include "model/drone_model.hpp"
 #include "model/model_sim.hpp"
-#include "logging/logger.hpp"
-#include "logging/parser.hpp"
+#include "utils/logger.hpp"
+#include "utils/parser.hpp"
 
 //static string keyboard_device = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
 //static string keyboard_device = "/dev/input/event9";

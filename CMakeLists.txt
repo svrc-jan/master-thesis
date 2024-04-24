@@ -25,21 +25,22 @@ include_directories(${CERES_INCLUDE_DIRS})
 
 set(manual_control_file "${PROJECT_SOURCE_DIR}/src/manual_control.cpp")
 set(filter_test_file "${PROJECT_SOURCE_DIR}/src/filter_test.cpp")
-set(run_mpc_sim_file "${PROJECT_SOURCE_DIR}/src/run_mpc_sim.cpp")
-set(run_model_est_file "${PROJECT_SOURCE_DIR}/src/run_model_est.cpp")
 set(run_sim_file "${PROJECT_SOURCE_DIR}/src/run_sim.cpp")
+set(run_mpc_sim_file "${PROJECT_SOURCE_DIR}/src/run_mpc_sim.cpp")
+set(run_mhe_mpc_sim_file "${PROJECT_SOURCE_DIR}/src/run_mhe_mpc_sim.cpp")
+set(run_model_ident_file "${PROJECT_SOURCE_DIR}/src/run_model_ident.cpp")
+
 
 
 message(${all_SRCS})
 
 list(REMOVE_ITEM all_SRCS 
-	${plot_test_file} 
 	${manual_control_file}
-	${plot_vicon_file}
 	${filter_test_file}
-	${run_mpc_sim_file}
-	${run_model_est_file}
 	${run_sim_file}
+	${run_mpc_sim_file}
+	${run_hme_mpc_sim_file}
+	${run_model_ident_file}
 )
 
 add_executable(manual_control ${manual_control_file} ${all_SRCS})
@@ -52,8 +53,11 @@ add_executable(run_sim ${run_sim_file} ${all_SRCS})
 add_executable(run_mpc_sim ${run_mpc_sim_file} ${all_SRCS})
 target_link_libraries(run_mpc_sim ${CERES_LIBRARIES})
 
-add_executable(run_model_est ${run_model_est_file} ${all_SRCS})
-target_link_libraries(run_model_est ${CERES_LIBRARIES})
+add_executable(run_mhe_mpc_sim ${run_mhe_mpc_sim_file} ${all_SRCS})
+target_link_libraries(run_mhe_mpc_sim ${CERES_LIBRARIES})
+
+add_executable(run_model_ident ${run_model_ident_file} ${all_SRCS})
+target_link_libraries(run_model_ident ${CERES_LIBRARIES})
 
 
 

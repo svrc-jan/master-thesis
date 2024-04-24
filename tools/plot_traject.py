@@ -28,6 +28,13 @@ def plot_file(win, file_path):
 				p = [float(x) for x in data[2:]]
 				pos = np.concatenate((pos, np.array(p)[None, :4]), axis=0)
 
+			if data[0] == 'target':
+				p = [float(x) for x in data[1:]]
+
+				ax1.scatter(p[1], p[2], c = 4)
+				ax2.scatter(p[0], p[3], c = 4)
+				ax3.scatter(p[0], p[4], c = 4)
+
 
 	ax1.plot(pos[:,0], pos[:,1])
 	ax1.axis('equal')
