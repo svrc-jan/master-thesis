@@ -20,6 +20,6 @@
 	"solver_tol" : 1e-3,
 	"solver_max_iter" : 5,
 	"solver_stdout" : false,
-	"solver_threads" : 4,
+	"solver_threads" : 1,
 	"solver_linear_solver_type" : "sparse_cholesky"
 }

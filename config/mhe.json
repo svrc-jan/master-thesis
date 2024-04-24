@@ -11,13 +11,13 @@
 		1, 1, 1, 1
 	],
 	"C_prior" : [
-		0, 0, 0, 0,
-		0, 0, 0 
+		10, 10, 10, 10,
+		10, 10, 10 
 	],
 
 	"solver_tol" : 1e-5,
 	"solver_max_iter" : 10,
 	"solver_stdout" : false,
-	"solver_threads" : 4,
+	"solver_threads" : 1,
 	"solver_linear_solver_type" : "sparse_cholesky"
 }

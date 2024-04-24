@@ -81,8 +81,8 @@ int main(int argc, char const *argv[])
 
 	
 
-	pos_t pos;
-	input_t input;
+	M::o_vec obs;
+	M::u_vec input, prev_input; 
 
     M::s_vec target;
     M::s_vec state_pred;
@@ -117,10 +117,10 @@ int main(int argc, char const *argv[])
 
 		mpc.reset();
 		mhe.reset();
-		mhe.estim.p_prior = mpc_p;
+		mhe.sol.p = mpc_p;
 
-		pos = sim.reset();
-		input.data.setZero();
+		obs = sim.reset();
+		input.setZero();
 
 		int t = 0;
 
@@ -131,15 +131,16 @@ int main(int argc, char const *argv[])
 		while (true) {
 			mhe.get_est(s_est, p_est);
 
-            logger << "pos" << t << pos.data << '\n';
+            logger << "pos" << t << obs << '\n';
+			prev_input = input;
             input = mpc.u_vector(t);
-			logger << "input" << t << input.data << '\n';
+			logger << "input" << t << input << '\n';
 
 			mhe_logger << "pos" << t << s_est << '\n';
 			mhe_logger << "param" << t << p_est << '\n';
 
 
-			mhe.post_request(t, pos, input);
+			mhe.post_request(t, obs, prev_input);
 
 			u_buffer.push_back(input);
 			if (u_buffer.size() > mpc_u_delay) {
@@ -155,8 +156,7 @@ int main(int argc, char const *argv[])
 
 			// auto duration = chrono::duration_cast<chrono::microseconds>(mpc_end - mpc_start);
 			// cerr << "solution of request " << t << " took " << duration.count() << "us" << endl;
-			
-			pos = sim.step(input);
+			obs = sim.step(input);
 
 			t += 1;
 			if (t >= T_max) break;

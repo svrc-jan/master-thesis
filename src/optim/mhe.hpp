@@ -86,10 +86,17 @@ public:
 		this->problem = nullptr;
 	}
 
-	void shift_s_arr(int t)
+	void shift_arr(int t)
 	{
-		if (t < 0)
-			memcpy((void *)this->s[0], (void *)this->s[t], M::s_dim*(this->h-t)*sizeof(double));
+		if (t <= 0)
+			return;
+
+		if (t > this->h-1)
+			t = this->h-1;
+
+		memmove((void *)this->s[0], (void *)this->s[t], M::s_dim*(this->h+1-t)*sizeof(double));
+		memmove((void *)this->o[0], (void *)this->o[t], M::o_dim*(this->h-t)*sizeof(double));
+		memmove((void *)this->u[0], (void *)this->u[t], M::u_dim*(this->h-t)*sizeof(double));
 	}
 
 	void zero_arr()
@@ -110,6 +117,7 @@ public:
 		this->s_arr = new double[M::s_dim*this->h+1]; // we are gonna use the last estimate as prior so h+1
 		this->o_arr = new double[M::o_dim*this->h];
 		this->u_arr = new double[M::u_dim*this->h];
+
 		this->zero_arr();
 		
 		this->s.clear();
@@ -249,6 +257,9 @@ public:
 	struct request
 	{
 		int ts; // timestep
+		
+		vector<o_vec> o;
+		vector<u_vec> u;
 
 		mutex mtx;
 		condition_variable cv;
@@ -274,9 +285,6 @@ public:
 		this->done = true;
 		this->rqst.cv.notify_one();
 		this->hndl_thread.join();
-
-		delete this->u_arr;
-		delete this->o_arr;
 	}
 
 	void get_est(s_vec &s_, p_vec &p_) 
@@ -289,16 +297,13 @@ public:
 	void post_request(const int ts, const o_vec &o_, const u_vec &u_)
 	{
 		unique_lock<mutex> rqst_lck(this->rqst.mtx);
+		assert(ts == rqst.ts + 1);
 		this->rqst.ts = ts;
 
-		int arr_idx = ts % this->h; // circular array to avoid moving memory every step
-		
-
-		memcpy(this->o[arr_idx], o_.data(), M::o_dim*sizeof(double));
-		memcpy(this->u[arr_idx], u_.data(), M::u_dim*sizeof(double));
+		this->rqst.o.push_back(o_);
+		this->rqst.u.push_back(u_);
 		
 		this->rqst.cv.notify_one();
-		rqst_lck.unlock();
 	}
 
 	void start();
@@ -306,10 +311,11 @@ public:
 
 	void reset()
 	{
-		this->zero_arr();
 
 		unique_lock<mutex> rqst_lck(this->rqst.mtx);
 		this->rqst.ts = -1;
+		this->rqst.o.clear();
+		this->rqst.u.clear();
 		rqst_lck.unlock();
 
 		unique_lock<mutex> sol_lck(this->sol.mtx);
@@ -320,22 +326,9 @@ public:
 		
 	}
 
-	void zero_arr()
-	{
-		memset(this->o_arr, 0, M::o_dim*this->h*sizeof(double));
-		memset(this->u_arr, 0, M::u_dim*this->h*sizeof(double));
-	}
-
 	void set_config(json config);
 
 	int h;
-	int u_delay = 0;
-
-	vector<double *> o;
-	vector<double *> u;
-
-	double *u_arr = nullptr;
-	double *o_arr = nullptr;
 	
 	solution sol;
 	request rqst;
@@ -351,8 +344,7 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 {
 	cerr << "starting mhe handler thread" << endl;
 
-	int ts, shift;
-	double ds[M::s_dim];
+	int ts, time_shift;
 	while (!hndl->done)
 	{
 		unique_lock<mutex> rqst_lck(hndl->rqst.mtx);
@@ -363,31 +355,24 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 			rqst_lck.unlock();
 			break;
 		}
-		ts = hndl->rqst.ts;
-		int arr_idx = (ts + 1) % hndl->h;
+		time_shift = hndl->rqst.ts - hndl->sol.ts;
+		assert(time_shift == hndl->rqst.o.size() && time_shift == hndl->rqst.u.size());
+		hndl->estim.shift_arr(time_shift);
 
-		// [---*****]
-        // [*****---]
+		for (int t = 0; t < time_shift; t++) {
 
-		memcpy(hndl->estim.o[hndl->h - arr_idx], hndl->o[0], M::o_dim*arr_idx*sizeof(double));
-		memcpy(hndl->estim.o[0], hndl->o[arr_idx], M::o_dim*(hndl->h - arr_idx)*sizeof(double));
-
-		memcpy(hndl->estim.u[hndl->h - arr_idx], hndl->u[0], M::u_dim*arr_idx*sizeof(double));
-		memcpy(hndl->estim.u[0], hndl->u[arr_idx], M::u_dim*(hndl->h - arr_idx)*sizeof(double));
+			memcpy(hndl->estim.o[hndl->h - time_shift + t], hndl->rqst.o[t].data(), M::o_dim*sizeof(double));
+			memcpy(hndl->estim.u[hndl->h - time_shift + t], hndl->rqst.u[t].data(), M::u_dim*sizeof(double));
+		}
 
 		hndl->estim.p_prior = hndl->sol.p;
+
+		ts = hndl->rqst.ts;
+
+		hndl->rqst.o.clear();
+		hndl->rqst.u.clear();
+
 		rqst_lck.unlock();
-
-		shift = ts - hndl->sol.ts;
-
-		hndl->estim.shift_s_arr(min(shift, hndl->h));
-
-		for (int t = max(0, hndl->h - shift); t < hndl->h; t++) {
-			M::state_eq(ds, hndl->estim.s[t], hndl->estim.u[t], hndl->estim.p_prior.data());
-			for (int i = 0; i < M::s_dim; i++) {
-				hndl->estim.s[t+1][i] = hndl->estim.s[t][i] + ds[i]*hndl->estim.dt;
-			}
-		}
 
 		// hndl->ctrl.shift_u_arr(ts - hndl->sol.ts);
 		auto start = chrono::high_resolution_clock::now();
@@ -411,18 +396,7 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 
 template<typename M>
 void MHE_handler<M>::start()
-{
-
-	this->o_arr = new double[M::o_dim*this->h];
-	this->u_arr = new double[M::u_dim*this->h];
-	
-	this->o.clear();
-	this->u.clear();
-	for (int t = 0; t < this->h; t++) {
-		this->o.push_back(this->o_arr + t*M::o_dim);
-		this->u.push_back(this->u_arr + t*M::u_dim);
-	}
-
+{	
 	this->reset();
 	this->hndl_thread = thread(mhe_handler_func<M>, this);
 }
