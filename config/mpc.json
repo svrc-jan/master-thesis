@@ -5,21 +5,21 @@
 	
 	"C_s" : [
 		1, 1, 1, 1, 
-		0, 0, 0, 0
+		0.1, 0.1, 0.1, 0.1
 	],
 
 	"C_s_end" : [
 		10, 10, 10, 10,
-		30, 30, 30, 30
+		10, 10, 10, 10
 	],
 
 	"C_u" : [
-		1, 1, 0.5, 0.5
+		0.5, 0.5, 0.5, 0.5
 	],
 
 	"solver_tol" : 1e-3,
-	"solver_max_iter" : 5,
+	"solver_max_iter" : 4,
 	"solver_stdout" : false,
-	"solver_threads" : 1,
+	"solver_threads" : 6,
 	"solver_linear_solver_type" : "sparse_cholesky"
 }

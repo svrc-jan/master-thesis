@@ -16,11 +16,68 @@ using namespace std;
 using namespace ceres;
 using json = nlohmann::json;
 
+template<typename M>
+struct Obs_mhe_res
+{
+	Obs_mhe_res(const double *obs, const double *C) :
+		obs(obs), C(C) {}
+	
+	template <typename T>
+	bool operator()(const T* const s, T* residual) const 
+	{
+		T o[M::o_dim];
+		M::output_eq(o, s);
+
+		for (int i = 0; i < M::o_dim; i++) {
+			residual[i] = this->C[i]*(o[i] - this->obs[i]);
+		}
+
+		return true;
+	}
+
+	static CostFunction* Create(const double *obs, const double *C) {
+		return (new AutoDiffCostFunction<Obs_mhe_res, M::o_dim, M::s_dim>(new Obs_mhe_res(obs, C)));
+	}
+
+	
+	const double *obs;
+	const double *C; // cost multipliers
+};
 
 template<typename M>
-struct State_prior_res
+struct State_mhe_res
 {
-	State_prior_res(const double *s0, const double *u, const double dt, const double *C) :
+	State_mhe_res(const double *u, const double dt, const double *C) :
+		u(u), dt(dt), C(C) {}
+	
+	template <typename T>
+	bool operator()(const T* const s_curr, const T* const s_next,
+		const T* const p, T* res) const
+	{
+		T ds[M::s_dim];
+		M::state_eq(ds, s_curr, this->u, p);
+
+		for(int i = 0; i < M::s_dim; i++) {
+			res[i] = this->C[i]*((s_curr[i] - s_next[i])/this->dt + ds[i]);
+		}
+
+		return true;
+	}
+
+
+	static CostFunction* Create(const double* u, const double dt, const double *C) {
+		return (new AutoDiffCostFunction<State_mhe_res, M::s_dim, M::s_dim, M::s_dim, M::p_dim>(new State_mhe_res(u, dt, C)));
+	}
+
+	const double *u;
+	const double dt;
+	const double *C; // cost multiplier
+};
+
+template<typename M>
+struct State_mhe_prior_res
+{
+	State_mhe_prior_res(const double *s0, const double *u, const double dt, const double *C) :
 		s0(s0), u(u), dt(dt), C(C) {}
 	
 	template <typename T>
@@ -30,7 +87,7 @@ struct State_prior_res
 		M::state_eq(ds, this->s0, this->u, p);
 
 		for(int i = 0; i < M::s_dim; i++) {
-			res[i] = this->C[i]*(this->s0[i] - s_next[i] + this->dt*ds[i]);
+			res[i] = this->C[i]*((this->s0[i] - s_next[i])/this->dt + ds[i]);
 		}
 
 		return true;
@@ -38,7 +95,7 @@ struct State_prior_res
 
 
 	static CostFunction* Create(const double *s0, const double* u, const double dt, const double *C) {
-		return (new AutoDiffCostFunction<State_prior_res, M::s_dim, M::s_dim, M::p_dim>(new State_prior_res(s0, u, dt, C)));
+		return (new AutoDiffCostFunction<State_mhe_prior_res, M::s_dim, M::s_dim, M::p_dim>(new State_mhe_prior_res(s0, u, dt, C)));
 	}
 
 	const double *s0;
@@ -59,7 +116,8 @@ public:
 
 	MHE_estimator()
 	{
-		
+		this->p_lb = array_to_vector<M::p_dim>(M::p_lb);
+		this->p_ub = array_to_vector<M::p_dim>(M::p_ub);
 	}
 
 	~MHE_estimator()
@@ -82,8 +140,11 @@ public:
 		// delete this->p_est;
 		// this->p_est = nullptr;
 
-		delete this->problem;
-		this->problem = nullptr;
+		delete this->state_loss;
+		this->state_loss = nullptr;
+
+		// delete this->problem;
+		// this->problem = nullptr;
 	}
 
 	void shift_arr(int t)
@@ -131,23 +192,47 @@ public:
 			this->u.push_back(this->u_arr + t*M::u_dim);
 		}
 
-		for (int t = 0; t < this->h; t++) {
-			CostFunction *obs_cost_fun = Obs_res<M>::Create(this->o[t], this->C_o.data());
-			problem->AddResidualBlock(obs_cost_fun, this->obs_loss, this->s[t+1]); // we have h obs but h+1 states
-		}
-
-		CostFunction *state_prior_cost_fun = State_prior_res<M>::Create(
-			this->s[0], this->u[0], dt, this->C_s.data());
-		problem->AddResidualBlock(state_prior_cost_fun, nullptr, this->s[1], this->p_est);
-
-
-		for (int t = 1; t < this->h; t++) {
-			CostFunction *state_cost_fun = State_res<M>::Create(this->u[t], this->dt, this->C_s.data());
-			problem->AddResidualBlock(state_cost_fun, nullptr, this->s[t], this->s[t+1], this->p_est);
-		}
+		this->set_loss();
 
 		CostFunction *param_prior_cost_fun = Prior_res<M::p_dim>::Create(this->p_prior.data(), this->C_p.data());
 		problem->AddResidualBlock(param_prior_cost_fun, nullptr, this->p_est);
+		this->set_model_par_bounds();
+
+		for (int t = 0; t < this->h; t++) {
+			CostFunction *obs_cost_fun = Obs_mhe_res<M>::Create(this->o[t], this->C_o.data());
+			problem->AddResidualBlock(obs_cost_fun, this->obs_loss, this->s[t+1]); // we have h obs but h+1 states
+		}
+
+		CostFunction *state_prior_cost_fun = State_mhe_prior_res<M>::Create(
+			this->s[0], this->u[0], dt, this->C_s.data());
+		problem->AddResidualBlock(state_prior_cost_fun, this->state_loss, this->s[1], this->p_est);
+
+
+		for (int t = 1; t < this->h; t++) {
+			CostFunction *state_cost_fun = State_mhe_res<M>::Create(this->u[t], this->dt, this->C_s.data());
+			problem->AddResidualBlock(state_cost_fun, this->state_loss, this->s[t], this->s[t+1], this->p_est);
+		}
+
+
+	}
+
+	void set_model_par_bounds()
+	{
+		for (int i = 0; i < M::p_dim; i++) {
+			this->problem->SetParameterLowerBound(this->p_est, i, this->p_lb[i]);
+			this->problem->SetParameterUpperBound(this->p_est, i, this->p_ub[i]);
+		}
+	}
+
+	void set_loss()
+	{
+		if (this->obs_loss_s > 0) {
+			this->obs_loss = new LossFunctionWrapper(new TukeyLoss(this->obs_loss_s), ceres::DO_NOT_TAKE_OWNERSHIP);
+		}
+
+		if (this->state_loss_s > 0) {
+			this->state_loss = new LossFunctionWrapper(new HuberLoss(this->state_loss_s), ceres::DO_NOT_TAKE_OWNERSHIP);
+		}
 	}
 
 	void solve_problem()
@@ -171,8 +256,14 @@ public:
 	p_vec C_p;
 
 	p_vec p_prior;
+	p_vec p_lb;
+	p_vec p_ub;
 
+	double obs_loss_s = 0;
+	double state_loss_s = 0;
+	
 	LossFunctionWrapper* obs_loss = nullptr;
+	LossFunctionWrapper* state_loss = nullptr;
 
 	double *s_arr = nullptr;
 	vector<double *>s;
@@ -201,6 +292,22 @@ void MHE_estimator<M>::set_config(json config)
 	this->C_s = array_to_vector(config["C_s"]);
 	this->C_o = array_to_vector(config["C_o"]);
 	this->C_p = array_to_vector(config["C_prior"]);
+
+	if (!config["p_lb"].is_null()) {
+		this->p_lb = array_to_vector(config["p_lb"]);
+	}
+
+	if (!config["p_ub"].is_null()) {
+		this->p_ub = array_to_vector(config["p_ub"]);
+	}
+
+	if (!config["obs_loss_s"].is_null()) {
+		this->obs_loss_s = config["obs_loss_s"];
+	}
+
+	if (!config["state_loss_s"].is_null()) {
+		this->state_loss_s = config["state_loss_s"];
+	}
 
 	if (!config["solver_max_iter"].is_null()) {
 		this->solver_options.max_num_iterations = config["solver_max_iter"];
@@ -287,11 +394,14 @@ public:
 		this->hndl_thread.join();
 	}
 
-	void get_est(s_vec &s_, p_vec &p_) 
+	void get_est(s_vec &s_, p_vec &p_, int t) 
 	{
 		unique_lock<mutex> sol_lck(this->sol.mtx);
 		s_ = this->sol.s;
 		p_ = this->sol.p;
+		sol_lck.unlock();
+
+		cerr << "mhe lag " << t-sol.ts - 1 << " ";
 	}
 
 	void post_request(const int ts, const o_vec &o_, const u_vec &u_)
@@ -311,19 +421,17 @@ public:
 
 	void reset()
 	{
-
-		unique_lock<mutex> rqst_lck(this->rqst.mtx);
-		this->rqst.ts = -1;
-		this->rqst.o.clear();
-		this->rqst.u.clear();
-		rqst_lck.unlock();
-
 		unique_lock<mutex> sol_lck(this->sol.mtx);
 		this->sol.ts = -1;
 		this->estim.zero_arr();
 		sol_lck.unlock();
 
-		
+
+		unique_lock<mutex> rqst_lck(this->rqst.mtx);
+		this->rqst.ts = -1;
+		this->rqst.o.clear();
+		this->rqst.u.clear();
+		rqst_lck.unlock();		
 	}
 
 	void set_config(json config);
@@ -335,6 +443,7 @@ public:
 	
 	atomic<bool> done = false;
 	thread hndl_thread;
+
 
 	MHE_estimator<M> estim;
 };
@@ -375,9 +484,9 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 		rqst_lck.unlock();
 
 		// hndl->ctrl.shift_u_arr(ts - hndl->sol.ts);
-		auto start = chrono::high_resolution_clock::now();
+		// auto start = chrono::high_resolution_clock::now();
 		hndl->estim.solve_problem();
-		auto end = chrono::high_resolution_clock::now();
+		// auto end = chrono::high_resolution_clock::now();
 		
 		
 		unique_lock<mutex> sol_lck(hndl->sol.mtx);
@@ -386,8 +495,8 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 		hndl->sol.s = hndl->estim.s_vector();
 		sol_lck.unlock();
 
-		auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
-		cerr << "mhe ts " << ts << " duration " << duration.count() << " us" << endl;
+		// auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+		// cerr << "mhe ts " << ts << " duration " << duration.count() << " us" << endl;
 	}
 
 

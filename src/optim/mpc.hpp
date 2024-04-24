@@ -386,6 +386,8 @@ public:
 		else {
 			result = array_to_vector<M::u_dim>(this->sol.u[idx]);
 		}
+
+		result = exp(-idx)*result;
 		cout << "mpc lag " << idx << " ";
 		sol_lck.unlock();
 		return result;

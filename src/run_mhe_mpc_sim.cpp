@@ -104,7 +104,7 @@ int main(int argc, char const *argv[])
 		Logger mhe_logger(buffer);
 
 		srand(time(nullptr));
-		target = target.Random();
+		target = (double)(sim_config["target_dist"])*target.Random();
 	    for (int i = M::o_dim; i < M::s_dim; i++) target[i] = 0;
 
 
@@ -112,7 +112,7 @@ int main(int argc, char const *argv[])
 		logger << "params" << sim.params << '\n';
         logger << "target" << 0 << target << '\n';
 
-		mpc_p = sim.params + 0.05*sim.random_params_disturbance();
+		mpc_p = sim.params + (double)(sim_config["p_disturbance"])*sim.random_params_disturbance();
 		// mpc_p = sim.params;
 
 		mpc.reset();
@@ -129,26 +129,23 @@ int main(int argc, char const *argv[])
 		auto start = chrono::steady_clock::now();
 		auto next = start;
 		while (true) {
-			mhe.get_est(s_est, p_est);
+			mhe.get_est(s_est, p_est, t);
 
             logger << "pos" << t << obs << '\n';
-			prev_input = input;
             input = mpc.u_vector(t);
 			logger << "input" << t << input << '\n';
 
 			mhe_logger << "pos" << t << s_est << '\n';
 			mhe_logger << "param" << t << p_est << '\n';
 
-
-			mhe.post_request(t, obs, prev_input);
-
 			u_buffer.push_back(input);
-			if (u_buffer.size() > mpc_u_delay) {
+			if (u_buffer.size() > mpc_u_delay+1) {
 				u_buffer.pop_front();
 			}
+			state_pred = M::predict_state(s_est, u_buffer, p_est, dt);
+			mpc.post_request(t + 1, state_pred, target, p_est);
+			mhe.post_request(t, obs, u_buffer.front());
 
-			state_pred = M::predict_state(sim.state, u_buffer, mpc_p, dt);
-			mpc.post_request(t + 1, state_pred, target, mpc_p);
 			// auto mpc_start = chrono::high_resolution_clock::now();
 			// mpc.ctrl.solve_problem(pos_pred, target, mpc_p);
 			// auto mpc_end = chrono::high_resolution_clock::now();
@@ -167,6 +164,10 @@ int main(int argc, char const *argv[])
 			next += timestep;
 			std::this_thread::sleep_until(next);
 		}
+
+		cout << endl << "start param" << mpc_p.transpose() << endl;
+ 		cout << "true param" << sim.params.transpose() << endl;
+		cout << "mhe param" << p_est.transpose() << endl;
 
 		logger.close();
 	}

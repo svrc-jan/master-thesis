@@ -53,7 +53,7 @@ struct State_res
 		M::state_eq(ds, s_curr, this->u, p);
 
 		for(int i = 0; i < M::s_dim; i++) {
-			res[i] = this->C[i]*(s_curr[i] - s_next[i] + this->dt*ds[i]);
+			res[i] = this->C[i]*((s_curr[i] - s_next[i])/this->dt + ds[i]);
 		}
 
 		return true;

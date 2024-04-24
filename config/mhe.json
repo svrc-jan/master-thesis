@@ -1,10 +1,9 @@
 {
 	"dt" : 0.02,
-	"h" : 30,
-	"u_delay" : 0,
+	"h" : 20,
 	
 	"C_o" : [
-		1, 1, 1, 1
+		2, 2, 2, 2
 	],
 	"C_s" : [
 		100, 100, 100, 100,
@@ -12,12 +11,18 @@
 	],
 	"C_prior" : [
 		10, 10, 10, 10,
-		10, 10, 10 
+		10, 10, 10
 	],
 
+	"p_lb" : [0.5, 0.5, 0.2, -0.3, 0.1, 0.1, 0.05],
+	"p_ub" : [5, 5, 2, 0.3, 2, 2, 1],
+
+	"obs_loss_s" : 0,
+	"state_loss_s" : 0,
+
 	"solver_tol" : 1e-5,
-	"solver_max_iter" : 10,
+	"solver_max_iter" : 5,
 	"solver_stdout" : false,
-	"solver_threads" : 1,
+	"solver_threads" : 2,
 	"solver_linear_solver_type" : "sparse_cholesky"
 }

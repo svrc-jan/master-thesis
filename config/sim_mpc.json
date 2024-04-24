@@ -1,6 +1,6 @@
 {
 	"dt" : 0.02,
-	"T_max" : 500,
+	"T_max" : 1000,
 	"N_sim" : 1,
 	"u_delay" : 0,
 	"o_miss_prob" : 0.0,
@@ -11,13 +11,16 @@
 
 	"s_noise_sd" : [
 		0.0, 0.0, 0.0, 0.0,
-		0.1, 0.1, 0.1, 0.1
+		0.05, 0.05, 0.05, 0.1
 	],
 
 	"o_noise_sd" : [
-		0.001, 0.001, 0.001, 0.001
+		0.005, 0.005, 0.005, 0.01
 	],
 
+	"p_disturbance" : 0,
+
+	"target_dist" : 3,
 	"target_threshold" : 0.05,
 
 	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/sim_mpc",
