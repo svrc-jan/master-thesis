@@ -9,16 +9,16 @@
 class Vicon_filter
 {
 private:
-	double threshold = 5;
-	double angle_scaler = 1;
-	double vertical_scaler = 1;
+	double horizontal_threshold = 0.05;
+	double vertical_threshold = 0.05;
+	double angle_threshold = 0.5;
 
 	int hold = -1; // -1 : uninit, 0...n : n steps hold (detecting incorect read)
 	pos_t curr_pos;
 
 
 public:
-	Vicon_filter(double thr=5, double a_s=1, double v_s=1);
+	Vicon_filter(double h_thr=0.05, double v_thr=0.05, double a_thr=0.5);
 	~Vicon_filter();
 
 	double wrap_angle(double a);

@@ -1,0 +1,14 @@
+{
+	"input_c" : 0.02,
+	
+	"filter_horizontal_threshold" : 0.05,
+	"filter_vertical_threshold" : 0.05,
+	"filter_angle_threshold" : 0.5, 
+
+	"keyboard_device" : "/dev/input/by-path/platform-i8042-serio-0-event-kbd",
+	"vicon_ip" : "192.168.2.100",
+	"tello_port" : 8889,
+	"tello_net_interface" : "wlxd0374576c511",
+	
+	"log_dir" : "logs/real"
+}

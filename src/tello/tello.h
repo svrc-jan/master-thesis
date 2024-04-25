@@ -35,7 +35,7 @@ public:
 	CTello();
 	~CTello();
 
-	bool init(int port = 8889, char* net_interface = NULL);
+	bool init(const int port = 8889, const char* net_interface = NULL);
 	void close();
 
 	void setStickData(int fast, double roll, double pitch, double throttle, double yaw);

@@ -1,15 +1,13 @@
 #include "vicon_filter.hpp"
 
 
-Vicon_filter::Vicon_filter(double thr, double a_s, double v_s)
+Vicon_filter::Vicon_filter(double h_thr, double v_thr, double a_thr)
 {
 	this->hold = -1;
 
-	this->threshold = thr;
-	this->angle_scaler = a_s;
-	this->vertical_scaler = v_s;
-
-	cout << "thr " << thr <<  ", a_s" << a_s << ", v_s " << v_s << endl;
+	this->horizontal_threshold = h_thr;
+	this->vertical_threshold = v_thr;
+	this->angle_threshold = a_thr;
 }
 
 Vicon_filter::~Vicon_filter()
@@ -45,14 +43,20 @@ pos_t Vicon_filter::step(pos_t obs, bool valid)
 	pos_t diff;
 	diff.data = obs.data - this->curr_pos.data;
 	diff.a = wrap_angle(diff.a);
-	double lim = this->threshold*(this->hold + 3);
+	double lim = this->hold + 3;
 
-	if (sqrt(pow(diff.x, 2) + pow(diff.y, 2)) < lim &&
-		abs(diff.z) < this->vertical_scaler*lim &&
-		abs(diff.a) < this->angle_scaler*lim &&
+	if (sqrt(pow(diff.x, 2) + pow(diff.y, 2)) < this->vertical_threshold &&
+		abs(diff.z) < this->horizontal_threshold*lim &&
 		valid) {
 
-		obs.a = unwrap_angle(obs.a, this->curr_pos.a);
+		
+		if (abs(diff.a) < this->angle_threshold*lim) {
+			obs.a = unwrap_angle(obs.a, this->curr_pos.a);
+		}
+		else {
+			obs.a = this->curr_pos.a;
+		}
+
 		this->curr_pos = obs;		
 		this->hold = 0;
 	}

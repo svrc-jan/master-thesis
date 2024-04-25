@@ -37,11 +37,11 @@ CTello::CTello() :
 
 CTello::~CTello()
 {
-        land();
+	land();
 	close();
 }
 
-bool CTello::init(int port, char* net_interface)
+bool CTello::init(const int port, const char* net_interface)
 {
 	//close();
 
@@ -183,11 +183,12 @@ void CTello::setStickData(int fast, double roll, double pitch, double throttle, 
 }
 
 bool CTello::takeOff()
-{       printf("TAKEEEEE\r\n");
-        setStickData(0, 0, 0, 0, 0);
-        sendCmd(0x68, TELLO_CMD_TAKEOFF);
-        usleep(100e3);
-        return sendCmd(0x68, TELLO_CMD_TAKEOFF);
+{   
+	// printf("TAKEEEEE\r\n");
+	setStickData(0, 0, 0, 0, 0);
+	sendCmd(0x68, TELLO_CMD_TAKEOFF);
+	usleep(100e3);
+	return sendCmd(0x68, TELLO_CMD_TAKEOFF);
 }
 
 bool CTello::land()
