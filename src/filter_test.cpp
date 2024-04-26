@@ -5,83 +5,48 @@
 #include <vector>
 #include <cstring>
 
+#include <eigen3/Eigen/Dense>
+
+#include "model/drone_model.hpp"
 #include "filter/vicon_filter.hpp"
+#include "utils/parser.hpp"
+#include "utils/logger.hpp"
 
 using namespace std;
 
 int main(int argc, char const *argv[])
 {
-	Vicon_filter *filt;
 
-	if (argc <= 2) {
-		filt = new Vicon_filter;
-	}
-	else if (argc == 3) {
-		filt = new Vicon_filter(atof(argv[2]));
-	}
-	else if (argc == 4) {
-		filt = new Vicon_filter(atof(argv[2]), atof(argv[3]));
-	}
-	else if (argc == 5) {
-		filt = new Vicon_filter(atof(argv[2]), atof(argv[3]), atof(argv[4]));
-	}
-	// else {
-	// 	cerr << "File name missing!" << endl;
-	// 	return 1;
-	// }
+	Vicon_filter vicon_filter(atof(argv[3]), atof(argv[4]), atof(argv[5]));
 
-	string filename;
-	if (argc > 1) 
-		filename = string(argv[1]);
+	Eigen::Matrix<double, -1, 4, Eigen::RowMajor> pos_data;
+	Eigen::Matrix<double, -1, 4, Eigen::RowMajor> input_data;
 
-	else
-		filename = "/home/jsv/CVUT/master-thesis/data/2f";
+	auto data = Parser::parse_log(argv[1], 
+			{"input", "pos"},
+			{1, 1});
 
-	fstream fin(filename, ios::in);
-	if (!fin.is_open()) {
-		cerr << "File not found!" << endl;
-		return 1;
-	}
-
-	fstream fout(filename + "_filt", ios::out);
-	if (!fout.is_open()) {
-		cerr << "Cannot open file!" << endl;
-		return 1;
-	}
-
-	pos_t pos, pos_f;
+	Parser::fill_matrix<4>(pos_data, data["pos"]);
+	Parser::fill_matrix<4>(input_data, data["input"]);
+ 
+	Logger logger(argv[2]);
+	
+	pos_t raw_pos, filt_pos;
 	input_t input;
-	string line, val;
 
-	vector<double> values;
 	char buffer[256];
-	
-	while (!getline(fin, line).eof()) {
-		values.clear();
 
-		stringstream ss(line, ios::in);
-		while (getline(ss, val, ',')) {
-			values.push_back(stod(val));
-		}
+	int t = 0;
+	while (t < pos_data.rows()) {
+		raw_pos.data = pos_data.row(t);
+		filt_pos = vicon_filter.step(raw_pos, 1);
+		input = input_data.row(t);
 		
-		for (size_t i = 0; i < 4; i++) {
-			pos[i] = values[i];
-			input[i] = values[i+4];
-		}
+		logger << "pos" << t << filt_pos.data << '\n';
+		logger << "input" << t << input.data << '\n';
 		
-		pos_f = filt->step(pos, true);
-		
-		sprintf(buffer, "%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f,%5.2f\n",
-			pos_f.x, pos_f.y, pos_f.z, pos_f.a,
-			input.roll, input.pitch, input.throttle, input.yaw);
-
-		fout << buffer;
+		t += 1;
 	}
-	
-	
-	
-
-	delete filt;
 
 	return 0;
 }

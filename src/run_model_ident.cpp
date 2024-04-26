@@ -20,7 +20,7 @@ using namespace std;
 
 using json = nlohmann::json;
 
-string default_config = "/home/jsv/CVUT/master-thesis/config/est_sim.json";
+string default_config = "/home/jsv/CVUT/master-thesis/config/est_real.json";
 
 
 int main(int argc, char const *argv[])
@@ -60,26 +60,21 @@ int main(int argc, char const *argv[])
 	char buffer[256];
 	for (int i = 0; i < min((int)log_files.size(), max_models); i++) {
 		sprintf(buffer, "%s/%s", log_dir.c_str(), log_files[i].c_str());
-		cout << buffer << endl;
-		
 		auto data = Parser::parse_log(buffer, 
 			{"input", "pos"},
 			{1, 1});
 
 		Parser::fill_matrix<M::o_dim>(pos, data["pos"]);
-		input.conservativeResize(pos.rows(), input.cols());
 		Parser::fill_matrix<M::u_dim>(input, data["input"]);
+
+		assert(pos.rows() == input.rows());
+
+		cout << buffer << " : " << pos.rows() << " timesteps" << endl;
 
 		model_ident.add_trajectory(pos, input);
 	}
 
 	
-
-
-	ceres::Solver::Options options;
-	options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-	options.max_num_iterations = 100;
-	options.num_threads = 6;
 	// options.minimizer_progress_to_stdout = true;
 
 	ceres::Solver::Summary summary;
@@ -94,33 +89,36 @@ int main(int argc, char const *argv[])
 	M::s_vec stat;
 	double best_stat = -INFINITY;
 	int best_delay = -1;
+	model_ident.build_problem(dt, model_delay);
+	model_ident.solve(&summary);
 
-	while (true) {
-		cout << "model delay " << model_delay << endl;
-		model_ident.build_problem(dt, model_delay);
-		model_ident.solve(options, &summary);
-		cout << summary.BriefReport() << endl;
+	cout << summary.BriefReport() << endl;
 
-		best_stat = -INFINITY;
-		best_delay = -1;
+	// while (true) {
+	// 	cout << "model delay " << model_delay << endl;
+		
+	// 	cout << summary.BriefReport() << endl;
 
-		for (int d = 0; d < u_delay_max; d++) {
-			stat = model_ident.calculate_state_equation_corr(model_ident.param_est, dt, d);
-			cout << "delay: " << d << ", state eq corr: " << stat.transpose() << endl;
+	// 	best_stat = -INFINITY;
+	// 	best_delay = -1;
+
+	// 	for (int d = 0; d < u_delay_max; d++) {
+	// 		stat = model_ident.calculate_state_equation_corr(model_ident.param_est, dt, d);
+	// 		cout << "delay: " << d << ", state eq corr: " << stat.transpose() << endl;
 			
 
-			if (stat.mean() > best_stat) {
-				best_stat = stat.mean();
-				best_delay = d;
-			}
-		}
+	// 		if (stat.mean() > best_stat) {
+	// 			best_stat = stat.mean();
+	// 			best_delay = d;
+	// 		}
+	// 	}
 
-		if (best_delay == model_delay) {
-			break;
-		}
+	// 	if (best_delay == model_delay) {
+	// 		break;
+	// 	}
 
-		model_delay = best_delay;
-	}
+	// 	model_delay = best_delay;
+	// }
 	
 
 	cout << "delay est" << model_delay << endl;

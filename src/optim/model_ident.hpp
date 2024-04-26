@@ -372,17 +372,18 @@ public:
 	{
 		this->param_prior = prior;
 		this->add_prior<M::p_dim>(this->param_est.data(), this->param_prior.data(), this->C_prior.data());
+		this->param_est = prior;
 	}
 
 
-	void solve(Solver::Options options, Solver::Summary *summary) {
-		Solve(options, this->problem, summary);
+	void solve(Solver::Summary *summary) {
+		Solve(this->solver_options, this->problem, summary);
 	}
 
 	void set_loss()
 	{
 		if (this->obs_loss_s > 0) {
-			this->obs_loss = new LossFunctionWrapper(new TukeyLoss(this->obs_loss_s), ceres::TAKE_OWNERSHIP);
+			this->obs_loss = new LossFunctionWrapper(new HuberLoss(this->obs_loss_s), ceres::TAKE_OWNERSHIP);
 		}
 
 		if (this->state_loss_s > 0) {
@@ -397,6 +398,7 @@ public:
 	double obs_loss_s = 0;
 	
 	Problem* problem = nullptr;
+	Solver::Options solver_options;
 
 	vector<o_mat *> pos_data;
 	vector<u_mat *> input_data;
@@ -453,6 +455,52 @@ void Model_ident<M>::set_config(json config)
 	if (!config["state_loss_s"].is_null()) {
 		this->state_loss_s = config["state_loss_s"];
 	}
+
+	if (!config["solver_max_iter"].is_null()) {
+		this->solver_options.max_num_iterations = config["solver_max_iter"];
+	}
+
+	if (!config["solver_tol"].is_null()) {
+		this->solver_options.function_tolerance = config["solver_tol"];
+	}
+
+	if (!config["solver_max_time"].is_null()) {
+		this->solver_options.max_solver_time_in_seconds = config["solver_max_time"];
+	}
+
+
+	if (!config["solver_stdout"].is_null()) {
+		this->solver_options.minimizer_progress_to_stdout = config["solver_stdout"];
+	}
+
+	if (!config["solver_threads"].is_null()) {
+		this->solver_options.num_threads = config["solver_threads"];
+		cerr << "MPC using " << config["solver_threads"] << " threads" << endl;
+	}
+
+	if (!config["solver_linear_solver_type"].is_null()) {
+		if (string(config["solver_linear_solver_type"]).compare("qr") == 0) {
+			this->solver_options.linear_solver_type = ceres::DENSE_QR;
+			cerr << "using dense qr" << endl;
+		}
+		else if (string(config["solver_linear_solver_type"]).compare("cholesky") == 0) {
+			this->solver_options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
+			cerr << "using dense cholesky" << endl;
+		}
+		else if (string(config["solver_linear_solver_type"]).compare("schur") == 0) {
+			this->solver_options.linear_solver_type = ceres::DENSE_SCHUR;
+			cerr << "using dense schur" << endl;
+		}
+		else if (string(config["solver_linear_solver_type"]).compare("sparse_cholesky") == 0) {
+			this->solver_options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+			cerr << "using sparse cholesky" << endl;
+		}
+		else if (string(config["solver_linear_solver_type"]).compare("sparse_schur") == 0) {
+			this->solver_options.linear_solver_type = ceres::SPARSE_SCHUR;
+			cerr << "using sparse schur" << endl;
+		}
+	}
+	
 }
 
 

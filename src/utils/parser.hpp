@@ -85,9 +85,7 @@ map<string, vector<vector<double>>> Parser::parse_log(string file_name, vector<s
 template<int S>
 void Parser::fill_matrix(Eigen::Matrix<double, -1, S, Eigen::RowMajor> &mat, vector<vector<double>> &data)
 {
-	if (mat.rows() < data.size()) {
-		mat.conservativeResize(data.size(), mat.cols());
-	}
+	mat.conservativeResize(data.size(), mat.cols());
 	int i, j;
 	for(i = 0; i < data.size(); i++) {
 		for (j = 0; j < data[i].size(); j++) {
@@ -104,15 +102,15 @@ void Parser::fill_matrix(Eigen::Matrix<double, -1, S, Eigen::RowMajor> &mat, vec
 
 	}
 
-	for(; i < mat.rows(); i++) {
-		for (j = 0; j < mat.cols(); j++) {
-			if (i == 0)
-				mat(i, j) = 0;
+	// for(; i < mat.rows(); i++) {
+	// 	for (j = 0; j < mat.cols(); j++) {
+	// 		if (i == 0)
+	// 			mat(i, j) = 0;
 			
-			else
-				mat(i, j) = mat(i-1, j);
-		}
-	}
+	// 		else
+	// 			mat(i, j) = mat(i-1, j);
+	// 	}
+	// }
 }
 
 template<int S>

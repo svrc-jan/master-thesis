@@ -23,7 +23,7 @@ void normalize_cols(Eigen::MatrixBase<Derived> &mat)
 {
     double var;
     for (int j = 0; j < mat.cols(); j++) {
-        var = mat.col(j).array().abs2().mean();
+        var = mat.col(j).array().abs2().mean() + 0.001;
         assert(var > 0);
         mat.col(j) = mat.col(j) / sqrt(var);
     }
