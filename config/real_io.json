@@ -1,5 +1,8 @@
 {
 	"input_c" : 0.02,
+
+	"param_est" : [],
+	
 	
 	"filter_horizontal_threshold" : 0.05,
 	"filter_vertical_threshold" : 0.05,

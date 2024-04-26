@@ -235,7 +235,7 @@ public:
 	void set_loss()
 	{
 		if (this->obs_loss_s > 0) {
-			this->obs_loss = new LossFunctionWrapper(new TukeyLoss(this->obs_loss_s), ceres::DO_NOT_TAKE_OWNERSHIP);
+			this->obs_loss = new LossFunctionWrapper(new HuberLoss(this->obs_loss_s), ceres::DO_NOT_TAKE_OWNERSHIP);
 		}
 
 		if (this->state_loss_s > 0) {
@@ -464,6 +464,7 @@ public:
 	atomic<bool> done = true;
 	thread hndl_thread;
 
+	bool shift_p_prior = false;
 
 	MHE_estimator<M> estim;
 };
@@ -505,7 +506,8 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 			memcpy(hndl->estim.u[hndl->h - time_shift + t], hndl->rqst.u[t].data(), M::u_dim*sizeof(double));
 		}
 
-		hndl->estim.p_prior = hndl->sol.p;
+		if (hndl->shift_p_prior)
+			hndl->estim.p_prior = hndl->sol.p;
 
 		ts = hndl->rqst.ts;
 

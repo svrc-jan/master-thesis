@@ -2,25 +2,25 @@
 	"dt" : 0.02,
 	"T_max" : 1000,
 	"N_sim" : 3,
-	"u_delay" : 20,
-	"o_miss_prob" : 0.02,
+	"u_delay" : 30,
+	"o_miss_prob" : 0.0,
 	
 	"p" : "random",
-	"p_lb" : [1, 1, 0.5, -0.3],
-	"p_ub" : [10, 10, 10, 0.3],
+	"p_lb" : [0.697314, 0.686645, 0.898523, 0.00],
+	"p_ub" : [1, 1, 1, 0.01],
 
 	"s_noise_sd" : [
-		0.01, 0.01, 0.01, 0.01
+		0.01, 0.01, 0.02, 0.01
 	],
 
 	"o_noise_sd" : [
-		0.005, 0.005, 0.005, 0.05
+		0.001, 0.001, 0.001, 0.005
 	],
 
 	"p_disturbance" : 0.1,
 
-	"target_dist" : 2,
-	"target_threshold" : 0.07,
+	"target_dist" : 1,
+	"target_threshold" : 0.05,
 
 	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/sim_mpc",
 	"clear_log_dir" : true

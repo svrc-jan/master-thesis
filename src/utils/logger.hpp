@@ -5,6 +5,8 @@
 #include <iomanip>
 #include <fstream>
 
+#include <utils/aux.hpp>
+
 #include <eigen3/Eigen/Dense>
 
 using namespace std;
@@ -28,6 +30,10 @@ public:
 	Logger(string file_name, int prec=4, char sep=',') :
 		sep(sep)
 	{
+		if (file_exists(file_name)) {
+			cerr << "Log file " << file_name << " already exists!" << endl;
+			exit(EXIT_FAILURE);
+		}
 		this->file.open(file_name);
 		line_start = true;
 		this->set_prec(prec);

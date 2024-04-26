@@ -28,6 +28,19 @@ int main(int argc, char const *argv[])
 
 	json io_config = get_json_config(io_config_file);
 
+	char buffer[256];
+
+	assert(argc > 1);
+	
+	sprintf(buffer, "%s/raw/%s.log", string(io_config["log_dir"]).c_str(), argv[1]);
+	Logger raw_logger(buffer);
+	cout << "raw log " << buffer << endl;
+	
+	sprintf(buffer, "%s/filt/%s.log", string(io_config["log_dir"]).c_str(), argv[1]);
+	Logger filt_logger(buffer);
+	cout << "filt log " << buffer << endl;
+	
+
 	CTello tello1;
 	const string tello_net_interface(io_config["tello_net_interface"]);
     tello1.init(
@@ -51,20 +64,6 @@ int main(int argc, char const *argv[])
 
 	auto start = steady_clock::now();
 	auto next = start;
-
-	string log_file;
-	char buffer[256];
-
-	assert(argc > 1);
-	
-	sprintf(buffer, "%s/raw/%s.log", string(io_config["log_dir"]).c_str(), argv[1]);
-	Logger raw_logger(buffer);
-	cout << "raw log " << buffer << endl;
-	
-	sprintf(buffer, "%s/filt/%s.log", string(io_config["log_dir"]).c_str(), argv[1]);
-	Logger filt_logger(buffer);
-	cout << "filt log " << buffer << endl;
-	
 	
 	char c;
 	bool done = false;
@@ -98,7 +97,7 @@ int main(int argc, char const *argv[])
 			cout << "tello landing" << endl;
 		}
 		else {
-			tello1.setStickData(true, input.roll, input.pitch, input.throttle, input.yaw);
+			tello1.setStickData(false, input.roll, input.pitch, input.throttle, input.yaw);
 		}
 
 		if (keyboard_hndl['f'] && !log_running) {

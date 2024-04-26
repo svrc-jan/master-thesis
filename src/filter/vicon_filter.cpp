@@ -4,6 +4,7 @@
 Vicon_filter::Vicon_filter(double h_thr, double v_thr, double a_thr)
 {
 	this->hold = -1;
+	this->a_hold = 0;
 
 	this->horizontal_threshold = h_thr;
 	this->vertical_threshold = v_thr;
@@ -14,9 +15,15 @@ Vicon_filter::~Vicon_filter()
 {
 }
 
+bool Vicon_filter::all_zero(pos_t obs)
+{
+	double eps = 1e-3;
+	return (abs(obs.x) < eps && abs(obs.y) < eps && abs(obs.z) < eps);
+}
+
 double Vicon_filter::wrap_angle(double a)
 {
-	a = fmod(a + M_PI, 2*M_PI) - M_PI;
+	a = fmod(a + 3*M_PI, 2*M_PI) - M_PI;
 
 	return a;
 }
@@ -32,7 +39,7 @@ pos_t Vicon_filter::step(pos_t obs, bool valid)
 	if (this->hold == -1) {
 		this->curr_pos = obs;
 		
-		if (valid && !(obs.x == 0 && obs.y == 0 && obs.z == 0 & obs.a == 0)) {
+		if (valid && !this->all_zero(obs)) {
 			hold = 0;
 		}
 
@@ -45,16 +52,22 @@ pos_t Vicon_filter::step(pos_t obs, bool valid)
 	diff.a = wrap_angle(diff.a);
 	double lim = this->hold + 3;
 
+	cout << "diff: " << diff << endl;
+
 	if (sqrt(pow(diff.x, 2) + pow(diff.y, 2)) < this->vertical_threshold &&
 		abs(diff.z) < this->horizontal_threshold*lim &&
+		obs.z > 0.01 &&
 		valid) {
 
-		
-		if (abs(diff.a) < this->angle_threshold*lim) {
+		double a_lim = this->a_hold + 3;
+
+		if (abs(diff.a) < this->angle_threshold*a_lim) {
 			obs.a = unwrap_angle(obs.a, this->curr_pos.a);
+			this->a_hold = 0;
 		}
 		else {
 			obs.a = this->curr_pos.a;
+			this->a_hold += 1;
 		}
 
 		this->curr_pos = obs;		

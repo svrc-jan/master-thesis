@@ -22,6 +22,6 @@
 
 	"solver_max_time" : 0.01,
 	"solver_stdout" : false,
-	"solver_threads" : 2,
+	"solver_threads" : 1,
 	"solver_linear_solver_type" : "sparse_cholesky"
 }
