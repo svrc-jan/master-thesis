@@ -69,38 +69,30 @@ struct State_res
 	const double *C; // cost multiplier
 };
 
-template<typename M>
-struct ParamStateRes
+template<int S>
+struct Diff_res
 {
-	ParamStateRes(const double *s_curr, const double *s_next, 
-		const double *u, const double dt, const double *C) :
-		s_curr(s_curr), s_next(s_next), u(u), dt(dt), C(C) {}
+	Diff_res(const double *C) :
+		C(C) {}
 	
 	template <typename T>
-	bool operator()(const T* const p, T* res) const
+	bool operator()(const T* a, const T* b, T* res) const
 	{
-		T ds[M::s_dim];
-		M::state_eq(ds, this->s_curr, this->u, p);
-
-		for(int i = 0; i < M::s_dim; i++) {
-			res[i] = this->C[i]*((this->s_curr[i] - this->s_next[i])/this->dt + ds[i]);
+		for(int i = 0; i < S; i++) {
+			res[i] = this->C[i]*(a[i] - b[i]);
 		}
 
 		return true;
 	}
 
 
-	static CostFunction* Create(const double *s_curr, const double *s_next, 
-		const double *u, const double dt, const double *C) {
-		return (new AutoDiffCostFunction<ParamStateRes, M::s_dim, M::p_dim>(new ParamStateRes(s_curr, s_next, u, dt, C)));
+	static CostFunction* Create(const double *C) {
+		return (new AutoDiffCostFunction<Diff_res, S, S, S>(new Diff_res(C)));
 	}
 
-	const double *s_curr;
-	const double *s_next;
-	const double *u;
-	const double dt;
 	const double *C; // cost multiplier
 };
+
 
 
 template<int S>
@@ -141,6 +133,7 @@ public:
 	typedef Eigen::Matrix<double, -1, M::s_dim, Eigen::RowMajor> s_mat;
 	typedef Eigen::Matrix<double, -1, M::o_dim, Eigen::RowMajor> o_mat;
 	typedef Eigen::Matrix<double, -1, M::u_dim, Eigen::RowMajor> u_mat;
+	typedef Eigen::Matrix<double, -1, M::p_dim, Eigen::RowMajor> p_mat;
 
 	Model_ident()
 	{
@@ -157,6 +150,9 @@ public:
 		this->param_ub = array_to_vector<M::p_dim>(M::p_ub);
 
 		this->param_prior = (this->param_lb + this->param_ub)/2;
+
+		this->C_shift_diff.setZero();
+		this->C_shift_global.setZero();
 	}
 
 	~Model_ident()
@@ -169,17 +165,68 @@ public:
 
 	void set_config(json config);
 
-	void add_obs(double *est, const double *obs)
+	void add_obs(int k, int t)
 	{
-		CostFunction *cost_fun = Obs_res<M>::Create(obs, this->C_o.data());		
-		problem->AddResidualBlock(cost_fun, this->obs_loss, est);
+		assert(k < this->state_est.size());
+		assert(t < this->state_est[k]->rows());
+	
+		double *o = this->pos_data[k]->row(t).data();
+		double *s = this->state_est[k]->row(t).data();
+
+		CostFunction *cost_fun = Obs_res<M>::Create(o, this->C_o.data());		
+		this->problem->AddResidualBlock(cost_fun, this->obs_loss, s);
 	}
 
-	void add_state(double *curr_state, double *next_state, double *model_par,
-		const double *input, double dt)
+	void add_state(int k, int t, int u_delay)
 	{
-		CostFunction *cost_fun = State_res<M>::Create(input, dt, this->C_s.data());
-		problem->AddResidualBlock(cost_fun, this->state_loss, curr_state, next_state, model_par);
+		assert(k < this->state_est.size());
+		assert(t < this->state_est[k]->rows() - 1);
+
+		double *s = this->state_est[k]->row(t).data();
+		double *s_next = this->state_est[k]->row(t+1).data();
+		double *u;
+		if (t >= u_delay)
+			u = this->input_data[k]->row(t).data();
+		else
+			u = this->u_0.data();
+
+		double *p = this->param_est.data();
+		if (this->use_param_shift)
+			p = this->param_shift_est[k]->row(t).data();
+
+		CostFunction *cost_fun = State_res<M>::Create(u, this->dt, this->C_s.data());
+		this->problem->AddResidualBlock(cost_fun, this->state_loss, s, s_next, p);
+	}
+
+	void add_param_shift_global(int k, int t)
+	{
+		assert(k < this->param_shift_est.size());
+		assert(t < this->param_shift_est[k]->rows());
+
+		double *p = this->param_shift_est[k]->row(t).data();
+		double *p_global = this->param_est.data();
+
+		CostFunction *cost_fun = Diff_res<M::p_dim>::Create(this->C_shift_global.data());
+		this->problem->AddResidualBlock(cost_fun, nullptr, p, p_global);
+
+		for (int i = 0; i < M::p_dim; i++) {
+			this->problem->SetParameterLowerBound(p, i, this->param_lb[i]);
+			this->problem->SetParameterUpperBound(p, i, this->param_ub[i]);
+		}
+
+
+	}
+
+	void add_param_shift_diff(int k, int t)
+	{
+		assert(k < this->param_shift_est.size());
+		assert(t < this->param_shift_est[k]->rows() - 1);
+
+		double *p = this->param_shift_est[k]->row(t).data();
+		double *p_next = this->param_shift_est[k]->row(t+1).data();
+
+		CostFunction *cost_fun = Diff_res<M::p_dim>::Create(this->C_shift_diff.data());
+		this->problem->AddResidualBlock(cost_fun, nullptr, p, p_next);
 	}
 
 	template<int S>
@@ -200,13 +247,21 @@ public:
 		o_data->operator=(pos);
 		u_data->operator=(input);
 
-		s_mat *s_est = new s_mat;
-		this->state_est.push_back(s_est);
-
 		int N = pos.rows();
 
+		s_mat *s_est = new s_mat;
+		this->state_est.push_back(s_est);
 		s_est->conservativeResize(N, M::s_dim);
 		s_est->setZero();
+
+		if (this->use_param_shift) {
+			p_mat *p_shift_est = new p_mat;
+			this->param_shift_est.push_back(p_shift_est);
+			p_shift_est->conservativeResize(N-1, M::s_dim);
+			for (int t = 0; t < N-1; t++) {
+				p_shift_est->row(t) = this->param_prior;
+			}
+		}
 
 		// prep values in the last state estimate
 		this->prep_values(this->state_est.size()-1);
@@ -241,9 +296,12 @@ public:
 		
 		for (int i; i < this->input_data.size(); i++)
 			delete this->input_data[i];
+
+		for (int i; i < this->param_shift_est.size(); i++)
+			delete this->param_shift_est[i];
 	}
 
-	void build_problem(double dt, int u_delay)
+	void build_problem(int u_delay)
 	{
 		assert(this->state_est.size() == this->pos_data.size() && this->state_est.size() == this->pos_data.size());
 		delete this->problem; // nothing happens for fresh, nullptr
@@ -265,52 +323,18 @@ public:
 		for (int k = 0; k < this->pos_data.size(); k++) {
 			int N = this->pos_data[k]->rows();
 			for (int t = 0; t < N; t++) {
-				o = this->pos_data[k]->row(t).data();
-				s = this->state_est[k]->row(t).data();
 
-				this->add_obs(s, o);
-
+				this->add_obs(k, t);
 				if (t == N - 1) continue; // cant res for last state
-				if (t < u_delay)
-					u = this->u_0.data();
+				this->add_state(k, t, u_delay);
+				if (this->use_param_shift)
+					this->add_param_shift_global(k, t);
 
-				else
-					u = this->input_data[k]->row(t-u_delay).data();
-
-				s_next = this->state_est[k]->row(t+1).data();
-				this->add_state(s, s_next, this->param_est.data(), u, dt);
+				if (t == N - 2) continue;
+				if (this->use_param_shift)
+					this->add_param_shift_diff(k, t);
 			}
 		}
-	}
-
-	p_vec solve_par_only(double dt, int u_delay, Solver::Options options, Solver::Summary *summary)
-	{
-		Problem par_only_prob;
-
-		p_vec par_cand = this->param_est;
-
-		double *o;
-		double *u;
-		double *s;
-		double *s_next;
-
-		for (int k = 0; k < this->pos_data.size(); k++) {
-			int N = this->pos_data[k]->rows();
-			for (int t = u_delay; t < N-1; t++) {
-				o = this->pos_data[k]->row(t).data();
-				u = this->input_data[k]->row(t-u_delay).data();
-
-				s = this->state_est[k]->row(t).data();
-				s_next = this->state_est[k]->row(t+1).data();
-
-				CostFunction *cost_fun = ParamStateRes<M>::Create(s, s_next, u, dt, this->C_s.data());
-				problem->AddResidualBlock(cost_fun, nullptr, par_cand.data());
-			}
-		}
-
-		Solve(options, &par_only_prob, summary);
-
-		return par_cand;
 	}
 
 	s_vec calculate_state_equation_corr(p_vec &par_est, double dt, int u_delay)
@@ -405,6 +429,11 @@ public:
 	
 
 	vector<s_mat *> state_est;
+	vector<p_mat *> param_shift_est;
+	p_vec C_shift_global;
+	p_vec C_shift_diff;
+
+
 	p_vec param_est;
 	p_vec param_prior;
 
@@ -415,14 +444,18 @@ public:
 	o_vec C_o;
 	s_vec C_s;
 
-	u_vec u_0;
+	u_vec u_0; //zero u always
 
 
+	double dt;
+	bool use_param_shift = false;
 };
 
 template<typename M>
 void Model_ident<M>::set_config(json config)
 {
+	this->dt = config["dt"];
+
 	if (!config["p_lb"].is_null()) {
 		this->param_lb = array_to_vector(config["p_lb"]);
 	}
@@ -440,10 +473,16 @@ void Model_ident<M>::set_config(json config)
 
 	this->C_o = array_to_vector(config["C_o"]);
 	this->C_s = array_to_vector(config["C_s"]);
+	this->C_prior = array_to_vector(config["C_prior"]);
 
-	if (config["C_prior"].is_array()) {
-		this->C_prior = array_to_vector(config["C_prior"]);
+	if (!config["use_param_shift"].is_null()) {
+		this->use_param_shift = config["use_param_shift"];
+		if (this->use_param_shift) {
+			this->C_o = array_to_vector(config["C_shift_global"]);
+			this->C_s = array_to_vector(config["C_shift_diff"]);
+		}
 	}
+
 	else {
 		this->C_prior.setConstant(config["C_prior"]);
 	}

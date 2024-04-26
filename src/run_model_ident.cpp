@@ -89,7 +89,7 @@ int main(int argc, char const *argv[])
 	M::s_vec stat;
 	double best_stat = -INFINITY;
 	int best_delay = -1;
-	model_ident.build_problem(dt, model_delay);
+	model_ident.build_problem(model_delay);
 	model_ident.solve(&summary);
 
 	cout << summary.BriefReport() << endl;
@@ -122,6 +122,8 @@ int main(int argc, char const *argv[])
 	
 
 	cout << "delay est" << model_delay << endl;
+	cout << "par est " << model_ident.param_est.transpose() << endl;
+	cout << "state corr" << model_ident.calculate_state_equation_corr(model_ident.param_est, dt, model_delay).transpose() << endl;
 
 	if (!config["clear_log_est_dir"].is_null()) {
 		if ((bool)config["clear_log_est_dir"]) {
@@ -135,14 +137,18 @@ int main(int argc, char const *argv[])
 		Logger logger(buffer);
 
 		M::o_vec o;
+		M::p_vec p;
 		logger << "delay" << model_delay << '\n';
-		logger << "params" << model_ident.param_est << '\n';
 		for (int t = 0; t < model_ident.state_est[i]->rows(); t++) {
 			M::output_eq(o.data(), model_ident.state_est[i]->row(t).data());
 			logger << "pos" << t << o << '\n';
+			if (model_ident.use_param_shift && t < model_ident.param_shift_est[i]->rows()) {
+				p = model_ident.param_shift_est[i]->row(t);
+				logger << "param" << t << p << '\n';
+			}
 		}
 	}
 
-	cout << "par est " << model_ident.param_est.transpose() << endl;
+	
 	return 0;
 }
