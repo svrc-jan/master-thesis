@@ -141,7 +141,7 @@ int main(int argc, char const *argv[])
 			if (u_buffer.size() > mpc_u_delay+1) {
 				u_buffer.pop_front();
 			}
-			state_pred = M::predict_state(obs, u_buffer, p_est, dt);
+			state_pred = M::predict_state(s_est, u_buffer, p_est, dt);
 			mpc.post_request(t + 1, state_pred, target, p_est);
 			mhe.post_request(t, obs, u_buffer.front());
 

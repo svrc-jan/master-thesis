@@ -29,6 +29,7 @@ set(run_sim_file "${PROJECT_SOURCE_DIR}/src/run_sim.cpp")
 set(run_mpc_sim_file "${PROJECT_SOURCE_DIR}/src/run_mpc_sim.cpp")
 set(run_mhe_mpc_sim_file "${PROJECT_SOURCE_DIR}/src/run_mhe_mpc_sim.cpp")
 set(run_model_ident_file "${PROJECT_SOURCE_DIR}/src/run_model_ident.cpp")
+set(mhe_test_file "${PROJECT_SOURCE_DIR}/src/mhe_test.cpp")
 
 
 
@@ -41,6 +42,7 @@ list(REMOVE_ITEM all_SRCS
 	${run_mpc_sim_file}
 	${run_mhe_mpc_sim_file}
 	${run_model_ident_file}
+	${mhe_test_file}
 )
 
 add_executable(manual_control ${manual_control_file} ${all_SRCS})
@@ -59,5 +61,7 @@ target_link_libraries(run_mhe_mpc_sim ${CERES_LIBRARIES})
 add_executable(run_model_ident ${run_model_ident_file} ${all_SRCS})
 target_link_libraries(run_model_ident ${CERES_LIBRARIES})
 
+add_executable(mhe_test ${mhe_test_file} ${all_SRCS})
+target_link_libraries(mhe_test ${CERES_LIBRARIES})
 
 

@@ -1,0 +1,27 @@
+{
+	"dt" : 0.02,
+	"T_max" : 1000,
+	"N_sim" : 3,
+	"u_delay" : 30,
+	"o_miss_prob" : 0.015,
+	
+	"p" : [0.917665, 0.412156, 0.918039, 0.02017],
+	"p_lb" : [0.817665, 0.312156, 0.818039, 0.01017],
+	"p_ub" : [1.017665, 0.512156, 1.018039, 0.03017],
+
+	"s_noise_sd" : [
+		0.01, 0.01, 0.1, 0.02
+	],
+
+	"o_noise_sd" : [
+		0.01, 0.01, 0.01, 0.05
+	],
+
+	"p_disturbance" : 1,
+
+	"target_dist" : 2,
+	"target_threshold" : 0.05,
+
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/sim_mpc",
+	"clear_log_dir" : true
+}

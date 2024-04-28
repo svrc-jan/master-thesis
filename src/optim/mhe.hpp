@@ -311,6 +311,23 @@ void MHE_estimator<M>::set_config(json config)
 		this->p_ub = array_to_vector(config["p_ub"]);
 	}
 
+	this->p_prior = (this->p_lb + this->p_ub)/2;
+
+	if (!config["p_prior"].is_null()) {
+		this->p_prior = array_to_vector(config["p_prior"]);
+	}
+
+
+	if (!config["p_lb"].is_null()) {
+		this->p_lb = array_to_vector(config["p_lb"]);
+	}
+
+	if (!config["p_ub"].is_null()) {
+		this->p_ub = array_to_vector(config["p_ub"]);
+	}
+
+
+
 	if (!config["obs_loss_s"].is_null()) {
 		this->obs_loss_s = config["obs_loss_s"];
 	}
@@ -477,6 +494,8 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 	cerr << "starting mhe handler thread" << endl;
 
 	int ts, time_shift;
+	double *s_next, *s, *u, *p;
+	typename M::s_vec ds;
 	while (!hndl->done)
 	{
 		unique_lock<mutex> rqst_lck(hndl->rqst.mtx);
@@ -500,10 +519,24 @@ void mhe_handler_func(MHE_handler<M> * hndl)
 		
 		hndl->estim.shift_arr(time_shift);
 
+		
+
 		for (int t = 0; t < time_shift; t++) {
 			hndl->estim.w[hndl->h - time_shift + t] = 1;
 			memcpy(hndl->estim.o[hndl->h - time_shift + t], hndl->rqst.o[t].data(), M::o_dim*sizeof(double));
 			memcpy(hndl->estim.u[hndl->h - time_shift + t], hndl->rqst.u[t].data(), M::u_dim*sizeof(double));
+
+			s = hndl->estim.s[hndl->h - time_shift + t];
+			s_next = hndl->estim.s[hndl->h - time_shift + t + 1];
+			u = hndl->estim.u[hndl->h - time_shift + t];
+			p = hndl->estim.p_prior.data();
+
+			M::state_eq(ds.data(), s, u, p);
+
+			for (int i = 0; i < M::s_dim; i++) {
+				s_next[i] = s[i] + hndl->estim.dt*ds[i];
+			}
+
 		}
 
 		if (hndl->shift_p_prior)
@@ -549,4 +582,8 @@ void MHE_handler<M>::set_config(json config)
 {
 	this->estim.set_config(config);
 	this->h = config["h"];
+
+	if (!config["shift_p_prior"].is_null()) {
+		this->shift_p_prior = config["shift_p_prior"];
+	}
 }

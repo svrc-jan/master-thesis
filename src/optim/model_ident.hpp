@@ -464,7 +464,7 @@ void Model_ident<M>::set_config(json config)
 		this->param_ub = array_to_vector(config["p_ub"]);
 	}
 
-	p_vec param_prior = (this->param_lb + this->param_ub)/2;
+	this->param_prior = (this->param_lb + this->param_ub)/2;
 
 	if (!config["p_prior"].is_null()) {
 		this->param_prior = array_to_vector(config["p_prior"]);

@@ -1,25 +1,29 @@
 {
 	"dt" : 0.02,
 	"h" : 40,
+	"u_delay" : 30,
 	
+	"shift_p_prior" : false,
+
 	"C_o" : [
-		4, 4, 4, 0.5
+		2, 2, 2, 1
 	],
 	"C_s" : [
-		1, 1, 1, 1
+		0.4, 0.4, 0.4, 0.4
 	],
 	"C_prior" : [
-		0.5, 0.5, 0.5, 2
+		10, 5, 5, 50
 	],
 
-	"p_lb" : [1, 1, 0.5, -0.3],
-	"p_ub" : [10, 10, 10, 0.3],
+	"p_prior" : [0.917665, 0.412156, 0.918039, 0.02017],
+	"p_lb" : [0.817665, 0.312156, 0.818039, 0.01017],
+	"p_ub" : [1.017665, 0.512156, 1.018039, 0.03017],
 
-	"obs_loss_s" : 0.5,
-	"state_loss_s" : 10,
+	"obs_loss_s" : 1,
+	"state_loss_s" : 1,
 
-	"solver_max_time" : 0.01,
+	"solver_max_time" : 0.005,
 	"solver_stdout" : false,
-	"solver_threads" : 1,
+	"solver_threads" : 6,
 	"solver_linear_solver_type" : "sparse_cholesky"
 }
