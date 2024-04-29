@@ -103,6 +103,7 @@ int main(int argc, char const *argv[])
 
 		srand(time(nullptr));
 		target = (double)(sim_config["target_dist"])*target.Random();
+		target[3] = target[3] >= 0 ? M_PI : -M_PI;
 	    for (int i = M::o_dim; i < M::s_dim; i++) target[i] = 0;
 
 
@@ -142,7 +143,7 @@ int main(int argc, char const *argv[])
 				u_buffer.pop_front();
 			}
 			state_pred = M::predict_state(s_est, u_buffer, p_est, dt);
-			mpc.post_request(t + 1, state_pred, target, p_est);
+			mpc.post_request(t + 1, state_pred, u_buffer.back(), target, p_est);
 			mhe.post_request(t, obs, u_buffer.front());
 
 			// auto mpc_start = chrono::high_resolution_clock::now();

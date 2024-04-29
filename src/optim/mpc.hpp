@@ -100,7 +100,55 @@ struct Action_term
 	const double *C; // cost multipliers
 };
 
+template<typename M>
+struct Action_diff_term
+{
+	Action_diff_term(const double *C) : C(C) {}
+	
+	template <typename T>
+	bool operator()(const T* const u1, const T* const u2, T* residual) const 
+	{
+		for (int i = 0; i < M::o_dim; i++) {
+			residual[i] = this->C[i]*(u2[i] - u1[i]);
+		}
 
+		return true;
+	}
+
+	static CostFunction* Create(const double *C) {
+		return (new AutoDiffCostFunction<Action_diff_term, M::u_dim, M::u_dim, M::u_dim>(
+			new Action_diff_term(C)));
+	}
+
+	const double *C; // cost multipliers
+};
+
+
+
+
+template<typename M>
+struct First_action_diff_term
+{
+	First_action_diff_term(double *u0, const double *C) : u0(u0), C(C) {}
+	
+	template <typename T>
+	bool operator()(const T* const u, T* residual) const 
+	{
+		for (int i = 0; i < M::o_dim; i++) {
+			residual[i] = this->C[i]*(u[i] - this->u0[i]);
+		}
+
+		return true;
+	}
+
+	static CostFunction* Create(double * u0, const double *C) {
+		return (new AutoDiffCostFunction<First_action_diff_term, M::u_dim, M::u_dim>(
+			new First_action_diff_term(u0, C)));
+	}
+
+	double *u0;
+	const double *C; // cost multipliers
+};
 
 
 template<typename M>
@@ -147,7 +195,7 @@ public:
 		delete this->problem; // nothing happens for fresh, nullptr
 		this->problem = new Problem();
 
-
+		this->u0.setZero();
 		this->u_arr = new double[M::u_dim*this->h];
 		this->zero_u_arr();
 		
@@ -160,8 +208,15 @@ public:
 		vector<double*> parameter_blocks;
 
 		for (int t = 0; t < this->h; t++) {
-			CostFunction *action_cost_fun = Action_term<M>::Create(this->C_u.data());
-			problem->AddResidualBlock(action_cost_fun, nullptr, this->u[t]);
+			if (t == 0) {
+				CostFunction *action_cost_fun = First_action_diff_term<M>::Create(this->u0.data(), this->C_u.data());
+				problem->AddResidualBlock(action_cost_fun, nullptr, this->u[t]);
+			}
+			else {
+				CostFunction *action_cost_fun = Action_diff_term<M>::Create(this->C_u.data());
+				problem->AddResidualBlock(action_cost_fun, nullptr, this->u[t-1], this->u[t]);
+			}
+			
 
 			for (int i = 0; i < M::u_dim; i++) {
 				problem->SetParameterLowerBound(this->u[t], i, this->u_lb[i]);
@@ -192,9 +247,10 @@ public:
 
 	}
 
-	void solve_problem(s_vec &s0_, s_vec &s_tar_, p_vec &p_)
+	void solve_problem(s_vec &s0_, u_vec& u0_, s_vec &s_tar_, p_vec &p_)
 	{
 		this->s0 = s0_;
+		this->u0 = u0_;
 		this->s_tar = s_tar_;
 		this->p = p_;
 
@@ -215,6 +271,7 @@ public:
 	int h; // horizon
 
 	s_vec s0;
+	u_vec u0;
 	s_vec s_tar;
 	p_vec p;
 
@@ -318,6 +375,7 @@ public:
 		int ts; // timestep
 
 		s_vec s0;
+		u_vec u0;
 		s_vec s_tar;
 		p_vec p;
 
@@ -347,11 +405,12 @@ public:
 		delete this->sol.u_arr;
 	}
 
-	void post_request(int ts, s_vec s0, s_vec s_tar, p_vec p)
+	void post_request(int ts, s_vec s0, u_vec u0, s_vec s_tar, p_vec p)
 	{
 		unique_lock<mutex> rqst_lck(this->rqst.mtx);
 		this->rqst.ts = ts;
 		this->rqst.s0 = s0;
+		this->rqst.u0 = u0;
 		this->rqst.s_tar = s_tar;
 		this->rqst.p = p;
 		
@@ -399,7 +458,7 @@ public:
 		}
 
 		// result = array_to_vector<M::u_dim>(this->sol.u[0]);
-		result = exp(-idx)*result;
+		result = exp(-idx/10)*result; // reduce input if the lag is big, dont want to overshoot
 		sol_lck.unlock();
 		cout << "mpc lag " << idx << " ";
 		return result;
@@ -409,6 +468,7 @@ public:
 
 	int h;
 	int u_delay = 0;
+	double max_target_distance = 0;
 	MPC_controller<M> ctrl;
 	
 	solution sol;
@@ -425,8 +485,11 @@ void mpc_handler_func(MPC_handler<M> * hndl)
 
 	int ts;
 	typename M::s_vec s0;
+	typename M::u_vec u0;
 	typename M::s_vec s_tar;
 	typename M::p_vec p;
+	typename M::s_vec s_diff; 
+	double target_dist;
 
 	while (!hndl->done)
 	{
@@ -445,14 +508,21 @@ void mpc_handler_func(MPC_handler<M> * hndl)
 
 		ts = hndl->rqst.ts;
 		s0 = hndl->rqst.s0;
+		u0 = hndl->rqst.u0;
 		s_tar = hndl->rqst.s_tar;
+		if (hndl->max_target_distance > 0) {
+			s_diff = s_tar - s0;
+			target_dist = s_diff.norm();
+			s_tar = s0 + (min(hndl->max_target_distance, target_dist)/target_dist)*s_diff;
+		} 
+
 		p = hndl->rqst.p;
 
 		rqst_lck.unlock();
 
 		// hndl->ctrl.shift_u_arr(ts - hndl->sol.ts);
 		auto start = chrono::high_resolution_clock::now();
-		hndl->ctrl.solve_problem(s0, s_tar, p);
+		hndl->ctrl.solve_problem(s0, u0, s_tar, p);
 		auto end = chrono::high_resolution_clock::now();
 		
 		unique_lock<mutex> sol_lck(hndl->sol.mtx);
@@ -491,4 +561,8 @@ void MPC_handler<M>::set_config(json config)
 {
 	this->ctrl.set_config(config);
 	this->h = config["h"];
+	
+	if (!config["max_target_distance"].is_null()) {
+		this->max_target_distance = config["max_target_distance"];
+	}
 }
