@@ -3,6 +3,7 @@
 
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <ctime>
 #include <chrono>
@@ -122,12 +123,12 @@ Eigen::Vector<double, -1> array_to_vector(vector<double> array)
 json get_json_config(string file_name)
 {
 	if (!file_exists(file_name)) {
-			cerr << "config file not found" << endl;
-			exit(1);
-		}
+        cerr << "config file '" << file_name << "' not found" << endl;
+        exit(1);
+    }
 
-	ifstream config_file(file_name);
-	json config = json::parse(config_file);
+    ifstream file(file_name);
+	json config = json::parse(file);
 
 	return config;
 }

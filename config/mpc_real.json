@@ -1,10 +1,10 @@
 {
 	"dt" : 0.02,
-	"h" : 20,
+	"h" : 12,
 	"u_delay" : 30,
 	
 	"C_s" : [
-		0.5, 0.5, 0.5, 0.5
+		1, 1, 1, 1
 	],
 
 	"C_s_end" : [
@@ -12,11 +12,11 @@
 	],
 
 	"C_u" : [
-		1, 1.2, 1, 0.5
+		1, 1, 1, 0.5
 	],
 
 	"solver_tol" : 1e-4,
-	"solver_max_time" : 0.015,
+	"solver_max_time" : 0.01,
 	"solver_stdout" : false,
 	"solver_threads" : 6,
 	"solver_linear_solver_type" : "sparse_cholesky"

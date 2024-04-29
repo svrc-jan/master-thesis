@@ -33,7 +33,9 @@ static map<char, size_t> key_map = {
 	{ 'f', KEY_F},
 	{ 'h', KEY_H},
 	{ 't', KEY_T},
-	{ 'r', KEY_R}
+	{ 'r', KEY_R},
+	{ 'e', KEY_E},
+	{ 'c', KEY_C},
 };
 
 class Keyboard_handler

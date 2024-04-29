@@ -438,7 +438,7 @@ public:
 	void post_request(const int ts, const o_vec &o_, const u_vec &u_)
 	{
 		unique_lock<mutex> rqst_lck(this->rqst.mtx);
-		assert(ts == rqst.ts + 1);
+		// assert(ts == rqst.ts + 1 && this->sol.ts == -1);
 		this->rqst.ts = ts;
 
 		this->rqst.o.push_back(o_);

@@ -46,7 +46,7 @@ list(REMOVE_ITEM all_SRCS
 )
 
 add_executable(manual_control ${manual_control_file} ${all_SRCS})
-target_link_libraries(manual_control ${CURSES_LIBRARIES})
+target_link_libraries(manual_control ${CURSES_LIBRARIES} ${CERES_LIBRARIES})
 
 add_executable(filter_test ${filter_test_file} ${all_SRCS})
 

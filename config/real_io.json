@@ -1,17 +1,20 @@
 {
 	"input_c" : 0.02,
-
-	"param_est" : [],
+	"u_delay" : 30,
 	
 	
-	"filter_horizontal_threshold" : 0.05,
-	"filter_vertical_threshold" : 0.05,
-	"filter_angle_threshold" : 0.5, 
+	"filter_horizontal_threshold" : 1,
+	"filter_vertical_threshold" : 1,
+	"filter_angle_threshold" : 0.2, 
 
 	"keyboard_device" : "/dev/input/by-path/platform-i8042-serio-0-event-kbd",
 	"vicon_ip" : "192.168.2.100",
 	"tello_port" : 8889,
 	"tello_net_interface" : "wlxd0374576c511",
 	
-	"log_dir" : "logs/real"
+	"mpc_config" : "/home/jsv/CVUT/master-thesis/config/mpc_real.json",
+	"mhe_config" : "/home/jsv/CVUT/master-thesis/config/mhe_real.json",
+
+
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/real2"
 }

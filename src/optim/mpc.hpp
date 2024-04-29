@@ -228,7 +228,7 @@ public:
 	double *u_arr = nullptr;
 	vector<double *>u;
 
-	Problem *problem;
+	Problem *problem = nullptr;
 	Solver::Summary solver_summary;
 	Solver::Options solver_options;
 };
@@ -399,9 +399,9 @@ public:
 		}
 
 		// result = array_to_vector<M::u_dim>(this->sol.u[0]);
-		// result = exp(-idx)*result;
-		cout << "mpc lag " << idx << " ";
+		result = exp(-idx)*result;
 		sol_lck.unlock();
+		cout << "mpc lag " << idx << " ";
 		return result;
 	}
 
