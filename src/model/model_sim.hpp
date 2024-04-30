@@ -28,6 +28,7 @@ public:
 
 		this->s_noise_sd.setZero();
 		this->o_noise_sd.setZero();
+		
 
 		p_lb = array_to_vector<M::p_dim>(M::p_lb);
 		p_ub = array_to_vector<M::p_dim>(M::p_ub);
@@ -54,9 +55,13 @@ public:
 	s_vec s_noise_sd;
 	o_vec o_noise_sd;
 
+	double s_noise_drift = 0;
+	s_vec s_drift;
+
 	int u_delay = 0; // expected delay
 	int u_delay_curr = 0; // current delay
 	int u_delay_max_diff = 0; // max_diff
+
 	double o_miss_prob = 0;
 	double dt = 1;
 private:
@@ -75,8 +80,8 @@ typename Model_sim<M>::o_vec Model_sim<M>::obs()
 	o_vec obs;
 	M::output_eq(obs.data(), this->state.data());
 	
-	if (o_miss_prob > 0) {
-		if (this->uniform_dist(this->rng) < o_miss_prob) {
+	if (this->o_miss_prob > 0) {
+		if (this->uniform_dist(this->rng) < this->o_miss_prob) {
 			obs.setZero();
 		}
 	}
@@ -95,6 +100,7 @@ typename Model_sim<M>::o_vec Model_sim<M>::reset()
 {
 	this->u_buffer.clear();
 	this->state.setZero();
+	this->s_drift.setZero();
 
 	this->u_delay_curr = u_delay;
 
@@ -137,8 +143,18 @@ typename Model_sim<M>::o_vec Model_sim<M>::step(u_vec input)
 	s_vec ds;
 	M::state_eq(ds.data(), this->state.data(), u.data(), this->params.data());
 
-	for (int i = 0; i < M::s_dim; i++) {
-		ds[i] += this->s_noise_sd[i]*this->normal_dist(this->rng);
+	if (this->s_noise_drift > 0) {
+		for (int i = 0; i < M::s_dim; i++) {
+			this->s_drift[i] -= this->dt*(1 - this->s_noise_drift)*this->s_drift[i];
+			this->s_drift[i] += this->s_noise_sd[i]*this->normal_dist(this->rng);
+			
+			ds[i] += this->s_drift[i];
+		}
+	}
+	else {
+		for (int i = 0; i < M::s_dim; i++) {
+			ds[i] += this->s_noise_sd[i]*this->normal_dist(this->rng);
+		}
 	}
 
 	this->state += this->dt*ds;
@@ -212,6 +228,10 @@ void Model_sim<M>::set_config(json config)
 
 	if (!config["o_noise_sd"].is_null()) {
 		this->o_noise_sd = array_to_vector(config["o_noise_sd"]);
+	}
+
+	if (!config["s_noise_drift"].is_null()) {
+		this->s_noise_drift = config["s_noise_drift"];
 	}
 
 	if (config["p"].is_string()) {

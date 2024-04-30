@@ -63,7 +63,7 @@ int main(int argc, char const *argv[])
 	if (!sim_config["clear_log_dir"].is_null()) {
 		if ((bool)sim_config["clear_log_dir"]) {
 			delete_dir_content(log_dir);
-			sprintf(buffer, "%s/est/", log_dir.c_str());
+			sprintf(buffer, "%s/mhe/", log_dir.c_str());
 			delete_dir_content(buffer);
 		}
 	}
@@ -98,30 +98,34 @@ int main(int argc, char const *argv[])
 		sprintf(buffer, "%s/%02d.log", log_dir.c_str(), sim_i+1);
 		Logger logger(buffer);
 
-		sprintf(buffer, "%s/est/%02d.log", log_dir.c_str(), sim_i+1);
+		sprintf(buffer, "%s/mhe/%02d.log", log_dir.c_str(), sim_i+1);
 		Logger mhe_logger(buffer);
 
 		srand(time(nullptr));
-		target = (double)(sim_config["target_dist"])*target.Random();
-		target[3] = target[3] >= 0 ? M_PI : -M_PI;
-	    for (int i = M::o_dim; i < M::s_dim; i++) target[i] = 0;
+		for (int i = M::o_dim; i < M::s_dim; i++) target[i] = 0;
 
 
 		logger << "delay" << sim.u_delay << '\n';
 		logger << "params" << sim.params << '\n';
-        logger << "target" << 0 << target << '\n';
 
-		mpc_p = sim.params + (double)(sim_config["p_disturbance"])*sim.random_params_disturbance();
+
+		mpc_p = sim.random_params();
 		// mpc_p = sim.params;
 
 		mpc.start();
 		mhe.sol.p = mpc_p;
+		mhe.estim.p_prior = mpc_p;
 		mhe.start();
 
 		obs = sim.reset();
 		input.setZero();
 
 		int t = 0;
+
+		int n_targets = sim_config["n_targets"];
+		int done_targets = 0;
+		int target_stable = sim_config["target_stable"];
+		int stable = 0;
 
 
 		auto timestep = int(dt*1000)*1ms;
@@ -137,6 +141,7 @@ int main(int argc, char const *argv[])
 
 			mhe_logger << "pos" << t << s_est << '\n';
 			mhe_logger << "param" << t << p_est << '\n';
+			mhe_logger << "input" << t << input << '\n';
 
 			u_buffer.push_back(input);
 			if (u_buffer.size() > mpc_u_delay+1) {
@@ -159,7 +164,25 @@ int main(int argc, char const *argv[])
 			if (t >= T_max) break;
             double max_s_diff = (sim.state - target).cwiseAbs().maxCoeff();
             cout << "max state diff " << max_s_diff << endl;
-            if (max_s_diff <= target_threshold) break;
+            if (max_s_diff <= target_threshold) {
+				stable += 1;
+				if (stable >= target_stable) {
+					done_targets += 1;
+					if (done_targets >= n_targets) {
+						break;
+					}
+					target = (double)(sim_config["target_dist"])*target.Random();
+					target[2] = 0.3*target[2];
+					target[3] = 0.3*target[3];
+
+					logger << "target" << t << target << '\n';
+				}
+				
+				
+			}
+			else {
+				stable = 0;
+			}
 
 			next += timestep;
 			std::this_thread::sleep_until(next);
