@@ -227,6 +227,52 @@ public:
 		{ return Base_model::predict_state<Simple_drone_model>(s0, u_list, p, dt); };
 };
 
+class Drift_drone_model : Base_model
+{
+/* simple drone mode:
+ * s = (x, y, z, a)
+ * u = (pitch, roll, yaw, throttle)
+ * o = (x, y, z, a)
+ * p = (c_h, c_v, c_a, e_a)
+ * 
+ * 
+ * state eq:
+ * dx = c_hor*(cos(a+e_a)*pitch - sin(a + e_a)*roll) + dr_x
+ * dy = c_hor*(sin(a+e_a)*pitch + cos(a + e_a)*roll) + dr_y
+ * dz = c_ver*throttle + dr_z
+ * da = c_ang*yaw + dr_a
+ */
+public:
+	static const int s_dim = 8;
+	static const int u_dim = 4;
+	static const int o_dim = 4;
+	static const int p_dim = 4;
+
+
+	typedef Eigen::Vector<double, s_dim> s_vec;
+	typedef Eigen::Vector<double, u_dim> u_vec;
+	typedef Eigen::Vector<double, o_dim> o_vec;
+	typedef Eigen::Vector<double, p_dim> p_vec;
+
+	// parameter upper and lower bounds
+	static constexpr double p_lb[] = {0.1, 0.1, 0.1, -3};
+	static constexpr double p_ub[] = {10,  10,  10,  3};
+
+	// action upper and lower bounds
+	static constexpr double u_lb[] = {-1, -1, -1, -1};
+	static constexpr double u_ub[] = {1,  1,  1,  1};
+
+
+	template<typename Tds, typename Ts, typename Tu, typename Tp>
+	static bool state_eq(Tds *ds, const Ts *s, const Tu *u, const Tp *p);
+
+	template<typename To, typename Ts>
+	static bool output_eq(To *o, const Ts *s);
+
+	static s_vec predict_state(const s_vec s0, const list<u_vec> u_list, const p_vec p, double dt) 
+		{ return Base_model::predict_state<Drift_drone_model>(s0, u_list, p, dt); };
+};
+
 class Innertia_drone_model : Base_model
 {
 /* innertia drone mode:
@@ -376,52 +422,33 @@ bool Innertia_drone_model::output_eq(To *o, const Ts *s)
 	return true;
 }
 
-class Real_drone_model : Base_model
+template<typename Tds, typename Ts, typename Tu, typename Tp>
+bool Drift_drone_model::state_eq(Tds *ds, const Ts *s, const Tu *u, const Tp *p)
 {
-/* innertia drone mode:
- * s = (x, y, z, a, dx, dy, dz, da)
- * u = (pitch, roll, yaw, throttle)
+	ds[0] = Tds(p[0]*(cos(s[3]+p[3])*u[1] - sin(s[2]+p[3])*-u[0])) + s[3];
+	ds[1] = Tds(p[0]*(sin(s[3]+p[3])*u[1] + cos(s[2]+p[3])*-u[0])) + s[4];
+	ds[2] = Tds(p[1]*u[3]) + s[5];
+	ds[3] = Tds(p[2]*u[2]) + s[6];
+	ds[4] = Tds(0);
+	ds[5] = Tds(0);
+	ds[6] = Tds(0);
+	ds[7] = Tds(0);
+
+
+	return true;
+}
+
+/* simple drone mode:
+ * s = (x, y, z, a)
  * o = (x, y, z, a)
- * p = (c_h, c_v, c_a, e_a, b_h, b_v, b_a)
- * 
- * 
- * state eq:
- * dx = dx
- * dy = dy
- * dz = dz
- * da = da
- * d_dx = c_hor*(cos(a+e_a)*pitch - sin(a + e_a)*roll) - b_h*dx
- * d_dy = c_hor*(sin(a+e_a)*pitch + cos(a + e_a)*roll) - b_h*dy
- * d_dz = c_ver*throttle - b_v*dz
- * d_da = c_ang*yaw  - b_a*da
  */
-public:
-	template<typename Tds, typename Ts, typename Tu, typename Tp>
-	static bool state_eq(Tds *ds, const Ts *s, const Tu *u, const Tp *p);
+template<typename To, typename Ts>
+bool Drift_drone_model::output_eq(To *o, const Ts *s)
+{
+	for (int i = 0; i < 4; i++)
+		o[i] = s[i];
 
-	template<typename To, typename Ts>
-	static bool output_eq(To *o, const Ts *s);
-
-	static const int s_dim = 8;
-	static const int u_dim = 4;
-	static const int o_dim = 4;
-	static const int p_dim = 7;
-
-	typedef Eigen::Vector<double, s_dim> s_vec;
-	typedef Eigen::Vector<double, u_dim> u_vec;
-	typedef Eigen::Vector<double, o_dim> o_vec;
-	typedef Eigen::Vector<double, p_dim> p_vec;
-
-	// parameter upper and lower bounds
-	static constexpr double p_lb[] = {2,   2,   2,  -0.3, 0.2, 0.2, 0.2};
-	static constexpr double p_ub[] = {100, 100, 100, 0.3, 20,  20,  20};
-
-	// action upper and lower bounds
-	static constexpr double u_lb[] = {-1, -1, -1, -1};
-	static constexpr double u_ub[] = {1,  1,  1,  1};
-
-	static s_vec predict_state(const s_vec s0, const list<u_vec> u_list, const p_vec p, double dt) 
-		{ return Base_model::predict_state<Innertia_drone_model>(s0, u_list, p, dt); };
-};
+	return true;
+}
 
 #endif

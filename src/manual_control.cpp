@@ -114,7 +114,7 @@ int main(int argc, char const *argv[])
 
 		raw_pos = vicon_hndl();
 
-		if (keyboard_hndl['e'] && ctrl_mode == 0) {
+		if (keyboard_hndl['e']) {
 			ctrl_mode = 1;
 		}
 		if (keyboard_hndl['c'] && ctrl_mode == 1) {
@@ -149,7 +149,7 @@ int main(int argc, char const *argv[])
 		if (ctrl_mode > 0) {
 			mhe.post_request(ts, filt_pos.data, u_buffer.front());
 			s_predict = M::predict_state(s_est, u_buffer, p_est, 0.02);
-			mpc.post_request(ts+1, s_predict, s_target, p_est);
+			mpc.post_request(ts+1, s_predict, u_buffer.back(), s_target, p_est);
 		}	
 
 

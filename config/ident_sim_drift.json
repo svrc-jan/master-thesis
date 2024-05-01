@@ -4,10 +4,11 @@
 	
 	"u_delay_max": 1,
 	"C_o" : [
-		1, 1, 1.2, 0.2
+		2, 2, 2, 2
 	],
 	"C_s" : [
-		0.4, 0.4, 0.08, 0.25
+		0.4, 0.4, 0.08, 0.25, 
+		0.1, 0.1, 0.1, 0.1
 	],
 	"C_prior" : [
 		1, 1, 1, 20
@@ -24,7 +25,7 @@
 	"state_loss_s" : 1,
 
 	"max_models" : 100,
-	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/sim_mpc",
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/sim_mpc/mhe",
 	"clear_log_est_dir" : true,
 
 	"solver_threads" : 8,

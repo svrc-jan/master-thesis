@@ -20,7 +20,7 @@ using namespace std;
 
 using json = nlohmann::json;
 
-string default_config = "/home/jsv/CVUT/master-thesis/config/est_real.json";
+string default_config = "/home/jsv/CVUT/master-thesis/config/ident_sim_simple.json";
 
 
 int main(int argc, char const *argv[])
