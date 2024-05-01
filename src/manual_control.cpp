@@ -117,9 +117,9 @@ int main(int argc, char const *argv[])
 		if (keyboard_hndl['e']) {
 			ctrl_mode = 1;
 		}
-		if (keyboard_hndl['c'] && ctrl_mode == 1) {
-			ctrl_mode = 2;
-		}
+		// if (keyboard_hndl['c'] && ctrl_mode == 1) {
+		// 	ctrl_mode = 2;
+		// }
 
 		if (ctrl_mode > 0) {
 			filt_pos = vicon_filter.step(raw_pos, 1);
@@ -133,7 +133,7 @@ int main(int argc, char const *argv[])
 			s_target = s_est;
 		}
 		else if (ctrl_mode == 2) {//
-			input.data = mpc.u_vector(ts);
+			// input.data = mpc.u_vector(ts);
 			s_target[0] += input_c*input_target[0];
 			s_target[1] -= input_c*input_target[1];
 			s_target[2] += input_c*input_target[3];
@@ -148,13 +148,19 @@ int main(int argc, char const *argv[])
 
 		if (ctrl_mode > 0) {
 			mhe.post_request(ts, filt_pos.data, u_buffer.front());
+			cout << s_est.transpose() << " | " << p_est.transpose() << endl;
+			assert(is_nan(s_est) && is_nan(p_est));
+			
 			s_predict = M::predict_state(s_est, u_buffer, p_est, 0.02);
+			assert(is_nan(s_predict));
 			mpc.post_request(ts+1, s_predict, u_buffer.back(), s_target, p_est);
 		}	
 
 
 		if (keyboard_hndl['q']) {
 			done = true;
+			mhe.done = true;
+			// mpc.done = true;
 			raw_logger.flush();
 			filt_logger.flush();
 			mhe_logger.flush();

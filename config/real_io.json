@@ -5,7 +5,7 @@
 	
 	"filter_horizontal_threshold" : 1,
 	"filter_vertical_threshold" : 1,
-	"filter_angle_threshold" : 0.2, 
+	"filter_angle_threshold" : 0.05, 
 
 	"keyboard_device" : "/dev/input/by-path/platform-i8042-serio-0-event-kbd",
 	"vicon_ip" : "192.168.2.100",
@@ -16,5 +16,5 @@
 	"mhe_config" : "/home/jsv/CVUT/master-thesis/config/mhe_real.json",
 
 
-	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/real2"
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/real"
 }

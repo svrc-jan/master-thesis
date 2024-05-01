@@ -26,7 +26,8 @@ def plot_file(win, file_path):
 			data = data.split(',')
 			if data[0] == 'pos':
 				p = [float(x) for x in data[2:]]
-				pos = np.concatenate((pos, np.array(p)[None, :4]), axis=0)
+				if (len(p)) == 4:
+					pos = np.concatenate((pos, np.array(p)[None, :4]), axis=0)
 				
 			# if data[0] == 'target':
 			# 	p = [float(x) for x in data[1:]]

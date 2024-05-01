@@ -506,10 +506,16 @@ void mpc_handler_func(MPC_handler<M> * hndl)
 			continue;
 		};
 
+
 		ts = hndl->rqst.ts;
 		s0 = hndl->rqst.s0;
 		u0 = hndl->rqst.u0;
 		s_tar = hndl->rqst.s_tar;
+
+		assert(is_nan(s0));
+		assert(is_nan(u0));
+		assert(is_nan(s_tar));
+
 		if (hndl->max_target_distance > 0) {
 			s_diff = s_tar - s0;
 			target_dist = s_diff.norm();
@@ -526,7 +532,7 @@ void mpc_handler_func(MPC_handler<M> * hndl)
 		auto end = chrono::high_resolution_clock::now();
 		
 		unique_lock<mutex> sol_lck(hndl->sol.mtx);
-
+		assert(!std::isnan(hndl->ctrl.u_arr[0]));
 		memcpy(hndl->sol.u_arr, hndl->ctrl.u_arr, M::u_dim*hndl->h*sizeof(double));
 		hndl->sol.ts = ts;
 
