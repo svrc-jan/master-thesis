@@ -171,16 +171,6 @@ int main(int argc, char const *argv[])
 			ctrl_step = 0;
 		}
 
-		if (keyboard_hndl['x'] && ctrl_step == 0) { // start trajectory
-			log_timestep = 0;
-			log_running = true;
-
-			ctrl_step = 1;
-			string log_file = get_new_log_name(io_config["log_dir"], log_name);
-			cout << "Opening log " << log_file << endl;
-			logger.open(log_file);
-		}
-
 		if (ctrl_step > -2) {
 			filt_pos = vicon_filter.step(raw_pos, 1);
 			mhe.get_est(s_est, p_est, ts);
@@ -227,17 +217,27 @@ int main(int argc, char const *argv[])
 			mhe.post_request(ts, filt_pos.data, u_buffer.front());
 			s_predict = M::predict_state(s_est, u_buffer, p_est, 0.02);
 			mpc.post_request(ts+1, s_predict, u_buffer.back(), s_target, p_est);
-
 			target_diff = s_target - s_est;
 		}	
 
-		if (ctrl_step > 0) {
+		if (ctrl_step >= 0) {
 			double target_dist = target_diff.norm();
 			if (target_dist <= target_tol) {
 				cout << "Target " << ctrl_step << " reached. " << endl;
 				ctrl_step += 1;
+				if (ctrl_step == 0) {
+					log_timestep = 0;
+					log_running = true;
+
+					ctrl_step = 1;
+					string log_file = get_new_log_name(io_config["log_dir"], log_name);
+					cout << "Opening log " << log_file << endl;
+					logger.open(log_file);
+				}
+
 				if (ctrl_step >= targets.size()) {
 					ctrl_step = 0;
+					logger.close();
 					log_running = false;
 				}
 			}
@@ -254,7 +254,7 @@ int main(int argc, char const *argv[])
 
 		if (ctrl_step > -2) {
 			ts += 1;
-			cout << "ts: " << ts << ", target diff: " << pos_t(target_diff) << ", input:" << input << "    \r" << flush;
+			cout << "ts: " << ts << ", tar diff: " << pos_t(target_diff) << ", input:" << input << "    \r" << flush;
 		}
 
 		next += timestep;
