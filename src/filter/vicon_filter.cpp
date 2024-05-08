@@ -52,7 +52,7 @@ pos_t Vicon_filter::step(pos_t obs, bool valid)
 	diff.a = wrap_angle(diff.a);
 	double lim = this->hold + 3;
 
-	cout << "diff: " << diff << endl;
+	// cout << "diff: " << diff << endl;
 
 	if (sqrt(pow(diff.x, 2) + pow(diff.y, 2)) < this->vertical_threshold &&
 		abs(diff.z) < this->horizontal_threshold*lim &&

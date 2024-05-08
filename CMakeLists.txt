@@ -24,6 +24,8 @@ include_directories(${CERES_INCLUDE_DIRS})
 
 
 set(manual_control_file "${PROJECT_SOURCE_DIR}/src/manual_control.cpp")
+set(mpc_control_file "${PROJECT_SOURCE_DIR}/src/mpc_control.cpp")
+
 set(filter_test_file "${PROJECT_SOURCE_DIR}/src/filter_test.cpp")
 set(run_sim_file "${PROJECT_SOURCE_DIR}/src/run_sim.cpp")
 set(run_mpc_sim_file "${PROJECT_SOURCE_DIR}/src/run_mpc_sim.cpp")
@@ -37,6 +39,7 @@ message(${all_SRCS})
 
 list(REMOVE_ITEM all_SRCS 
 	${manual_control_file}
+	${mpc_control_file}
 	${filter_test_file}
 	${run_sim_file}
 	${run_mpc_sim_file}
@@ -47,6 +50,9 @@ list(REMOVE_ITEM all_SRCS
 
 add_executable(manual_control ${manual_control_file} ${all_SRCS})
 target_link_libraries(manual_control ${CURSES_LIBRARIES} ${CERES_LIBRARIES})
+
+add_executable(mpc_control ${mpc_control_file} ${all_SRCS})
+target_link_libraries(mpc_control ${CURSES_LIBRARIES} ${CERES_LIBRARIES})
 
 add_executable(filter_test ${filter_test_file} ${all_SRCS})
 

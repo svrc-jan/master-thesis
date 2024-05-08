@@ -33,7 +33,17 @@ void normalize_cols(Eigen::MatrixBase<Derived> &mat)
 template<typename Derived>
 inline bool is_nan(const Eigen::MatrixBase<Derived>& x)
 {
-	return ((x.array() == x.array())).all();
+	return !(((x.array() == x.array())).all());
+}
+
+inline bool is_nan_array(double *arr, int size)
+{
+    for (int i = 0; i < size; i++) {
+        if (std::isnan(arr[i])) {
+            return true;
+        }
+    }
+    return false;
 }
 
 template<typename Derived1, typename Derived2>
@@ -118,6 +128,7 @@ Eigen::Vector<double, -1> array_to_vector(vector<double> array)
 
     return vector; 
 }
+
 
 
 json get_json_config(string file_name)

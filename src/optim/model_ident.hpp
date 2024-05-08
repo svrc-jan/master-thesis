@@ -372,12 +372,12 @@ public:
 			S += S_k;
 		}
 
-		assert(is_nan(s_diff) && is_nan(s_eq));
+		assert(!is_nan(s_diff) && !is_nan(s_eq));
 
 		normalize_cols(s_diff);
 		normalize_cols(s_eq);
 
-		assert(is_nan(s_diff) && is_nan(s_eq));
+		assert(!is_nan(s_diff) && !is_nan(s_eq));
 
 		stat = (s_diff.cwiseProduct(s_eq)).colwise().mean();
 

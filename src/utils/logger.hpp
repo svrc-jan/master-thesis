@@ -27,21 +27,18 @@ ofstream & operator<<(ofstream &s, const Eigen::MatrixBase<Derived> &m)
 class Logger
 {
 public:
-	Logger(string file_name, int prec=4, char sep=',') :
+	Logger(string file_name="", int prec=4, char sep=',') :
 		sep(sep)
 	{
-		if (file_exists(file_name)) {
-			cerr << "Log file " << file_name << " already exists!" << endl;
-			exit(EXIT_FAILURE);
-		}
-		this->file.open(file_name);
-		line_start = true;
 		this->set_prec(prec);
+		if (file_name.compare("") != 0) {
+			this->open(file_name);
+		}
 	}
 
 	~Logger()
 	{
-		this->file.close();
+		this->close();
 	}
 
 	void set_prec(int prec) {
@@ -87,9 +84,33 @@ public:
 	}
 
 	void flush() { this->file.flush(); }
-	void close() { this->file.close(); }
+	
+	void close() {
+		if (file_open) {
+			this->flush();
+			this->file.close();
+			this->file_open = false;
+		}
+	}
+
+	void open(string file_name) {
+		if (this->file_open) {
+			cerr << "Log already open!" << endl;
+			exit(EXIT_FAILURE);
+		}
+
+		if (file_exists(file_name)) {
+			cerr << "Log file " << file_name << " already exists!" << endl;
+			exit(EXIT_FAILURE);
+		}
+		this->file.open(file_name);
+		this->file_open = true;
+		this->line_start = true;
+	}
+
 
 private:
+	bool file_open = false;
 	ofstream file;
 	char sep;
 	bool line_start;

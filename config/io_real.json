@@ -1,6 +1,8 @@
 {
-	"input_c" : 0.02,
-	"u_delay" : 30,
+	"input_c" : 0.015,
+	"u_delay" : 35,
+
+	"target_threshold" : 0.15,
 	
 	
 	"filter_horizontal_threshold" : 1,
@@ -16,5 +18,5 @@
 	"mhe_config" : "/home/jsv/CVUT/master-thesis/config/mhe_real.json",
 
 
-	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/real"
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/mpc_test"
 }

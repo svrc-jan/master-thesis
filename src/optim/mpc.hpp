@@ -208,15 +208,20 @@ public:
 		vector<double*> parameter_blocks;
 
 		for (int t = 0; t < this->h; t++) {
-			if (t == 0) {
-				CostFunction *action_cost_fun = First_action_diff_term<M>::Create(this->u0.data(), this->C_u.data());
-				problem->AddResidualBlock(action_cost_fun, nullptr, this->u[t]);
+			if (this->use_u_diff) {
+				if (t == 0) {
+					CostFunction *action_cost_fun = First_action_diff_term<M>::Create(this->u0.data(), this->C_u.data());
+					problem->AddResidualBlock(action_cost_fun, nullptr, this->u[t]);
+				}
+				else {
+					CostFunction *action_cost_fun = Action_diff_term<M>::Create(this->C_u.data());
+					problem->AddResidualBlock(action_cost_fun, nullptr, this->u[t-1], this->u[t]);
+				}
 			}
 			else {
-				CostFunction *action_cost_fun = Action_diff_term<M>::Create(this->C_u.data());
-				problem->AddResidualBlock(action_cost_fun, nullptr, this->u[t-1], this->u[t]);
+				CostFunction *action_cost_fun = Action_term<M>::Create(this->C_u.data());
+				problem->AddResidualBlock(action_cost_fun, nullptr, this->u[t]);
 			}
-			
 
 			for (int i = 0; i < M::u_dim; i++) {
 				problem->SetParameterLowerBound(this->u[t], i, this->u_lb[i]);
@@ -254,6 +259,12 @@ public:
 		this->s_tar = s_tar_;
 		this->p = p_;
 
+		// assert(!is_nan(this->s0));
+		// assert(!is_nan(this->u0));
+		// assert(!is_nan(this->s_tar));
+		// assert(!is_nan(this->p));
+		// assert(!is_nan_array(this->u_arr, this->h*M::u_dim));
+
 		Solve(this->solver_options, this->problem, &(this->solver_summary));
 		if (this->solver_options.minimizer_progress_to_stdout) {
 			cout << this->solver_summary.BriefReport() << endl;
@@ -269,6 +280,7 @@ public:
 
 	double dt;
 	int h; // horizon
+	bool use_u_diff = false;
 
 	s_vec s0;
 	u_vec u0;
@@ -300,6 +312,10 @@ void MPC_controller<M>::set_config(json config)
 	this->C_s = array_to_vector(config["C_s"]);
 	this->C_s_end = array_to_vector(config["C_s_end"]);
 	this->C_u = array_to_vector(config["C_u"]);
+
+	if (!config["use_u_diff"].is_null()) {
+		this->use_u_diff = config["use_u_diff"];
+	}
 
 
 	if (!config["u_lb"].is_null()) {
@@ -508,19 +524,28 @@ void mpc_handler_func(MPC_handler<M> * hndl)
 
 
 		ts = hndl->rqst.ts;
-		s0 = hndl->rqst.s0;
-		u0 = hndl->rqst.u0;
-		s_tar = hndl->rqst.s_tar;
-
-		assert(is_nan(s0));
-		assert(is_nan(u0));
-		assert(is_nan(s_tar));
+		mempcpy(s0.data(), hndl->rqst.s0.data(), sizeof(double)*M::s_dim);
+		mempcpy(u0.data(), hndl->rqst.u0.data(), sizeof(double)*M::u_dim);
+		mempcpy(p.data(), hndl->rqst.p.data(), sizeof(double)*M::p_dim);
+		mempcpy(s_tar.data(), hndl->rqst.s_tar.data(), sizeof(double)*M::s_dim);
 
 		if (hndl->max_target_distance > 0) {
-			s_diff = s_tar - s0;
+			for (int i = 0; i < M::s_dim; i++) {
+				s_diff[i] = s_tar[i] - s0[i];
+			}
 			target_dist = s_diff.norm();
-			s_tar = s0 + (min(hndl->max_target_distance, target_dist)/target_dist)*s_diff;
+			if (target_dist > hndl->max_target_distance) {
+				for (int i = 0; i < M::s_dim; i++) {
+					s_tar[i] = s0[i] + (hndl->max_target_distance/target_dist)*s_diff[i];
+				}
+			}
 		} 
+
+		// assert(!is_nan(s0));
+		// assert(!is_nan(u0));
+		// assert(!is_nan(s_tar));
+		// assert(!is_nan(p));
+
 
 		p = hndl->rqst.p;
 

@@ -114,12 +114,12 @@ int main(int argc, char const *argv[])
 			pos = sim.step(input);
 
 			u_buffer.push_back(input);
-			if (u_buffer.size() > mpc_u_delay) {
+			if (u_buffer.size() > mpc_u_delay+1) {
 				u_buffer.pop_front();
 			}
 
 			pos_pred = M::predict_state(sim.state, u_buffer, mpc_p, dt);
-			mpc.post_request(t + 1, pos_pred, target, mpc_p);
+			mpc.post_request(t + 1, pos_pred, u_buffer.back(), target, mpc_p);
 			mpc_logger << "pos" << t << pos_pred << '\n';
 			// auto mpc_start = chrono::high_resolution_clock::now();
 			// mpc.ctrl.solve_problem(pos_pred, target, mpc_p);

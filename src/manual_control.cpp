@@ -117,9 +117,9 @@ int main(int argc, char const *argv[])
 		if (keyboard_hndl['e']) {
 			ctrl_mode = 1;
 		}
-		// if (keyboard_hndl['c'] && ctrl_mode == 1) {
-		// 	ctrl_mode = 2;
-		// }
+		if (keyboard_hndl['c'] && ctrl_mode == 1) {
+			ctrl_mode = 2;
+		}
 
 		if (ctrl_mode > 0) {
 			filt_pos = vicon_filter.step(raw_pos, 1);
@@ -130,14 +130,42 @@ int main(int argc, char const *argv[])
 
 		if (ctrl_mode == 1) {// manual
 			input.data = input_c*input_target.data + (1 - input_c)*input.data;
-			s_target = s_est;
+			memcpy(s_target.data(), s_est.data(), sizeof(double)*M::s_dim);
 		}
 		else if (ctrl_mode == 2) {//
-			// input.data = mpc.u_vector(ts);
-			s_target[0] += input_c*input_target[0];
-			s_target[1] -= input_c*input_target[1];
-			s_target[2] += input_c*input_target[3];
-			s_target[3] += input_c*input_target[2];
+			s_target[0] = s_target[0] + input_c*input_target.pitch;
+			s_target[1] = s_target[1] - input_c*input_target.roll;
+			s_target[2] = s_target[2] + input_c*input_target.throttle;
+			s_target[3] = s_target[3] + input_c*input_target.yaw;
+		}
+
+
+		u_mpc = mpc.u_vector(ts);
+
+
+		if (keyboard_hndl['q']) {
+			done = true;
+			raw_logger.flush();
+			filt_logger.flush();
+			mhe_logger.flush();
+			mhe.end();
+			mpc.end();
+		}
+
+		if (keyboard_hndl['t']) {
+			tello1.takeOff();
+			cout << "tello taking off" << endl;
+		}
+		else if (keyboard_hndl['r'] || keyboard_hndl['q']) {
+			tello1.land();
+			cout << "tello landing" << endl;
+		}
+		else {
+			if (ctrl_mode == 2) {
+				memcpy(input.data.data(), u_mpc.data(), sizeof(double)*M::u_dim);
+			}			
+			tello1.setStickData(false, input.roll, input.pitch, input.throttle, input.yaw);
+	
 		}
 
 		u_buffer.push_back(input.data);
@@ -148,34 +176,9 @@ int main(int argc, char const *argv[])
 
 		if (ctrl_mode > 0) {
 			mhe.post_request(ts, filt_pos.data, u_buffer.front());
-			cout << s_est.transpose() << " | " << p_est.transpose() << endl;
-			assert(is_nan(s_est) && is_nan(p_est));
-			
 			s_predict = M::predict_state(s_est, u_buffer, p_est, 0.02);
-			assert(is_nan(s_predict));
 			mpc.post_request(ts+1, s_predict, u_buffer.back(), s_target, p_est);
 		}	
-
-
-		if (keyboard_hndl['q']) {
-			done = true;
-			mhe.done = true;
-			// mpc.done = true;
-			raw_logger.flush();
-			filt_logger.flush();
-			mhe_logger.flush();
-		}
-		if (keyboard_hndl['t']) {
-			tello1.takeOff();
-			cout << "tello taking off" << endl;
-		}
-		if (keyboard_hndl['r'] || keyboard_hndl['q']) {
-			tello1.land();
-			cout << "tello landing" << endl;
-		}
-		else {
-			tello1.setStickData(false, input.roll, input.pitch, input.throttle, input.yaw);
-		}
 
 		if (keyboard_hndl['f'] && !log_running) {
 			log_running = true;
@@ -205,7 +208,8 @@ int main(int argc, char const *argv[])
 			mhe_logger << "param" << log_timestep << p_est << '\n';
 			
 
-			cout << "log timestep: " << log_timestep << ", pos: " << raw_pos << ", input:" << input << "    \r" << flush;
+			pos_t target_diff = pos_t(s_target - s_est);
+			cout << "log timestep: " << log_timestep << ", target_diff: " << target_diff << ", input:" << input << "    \r" << flush;
 			log_timestep += 1;
 		}
 
