@@ -1,8 +1,7 @@
 {
 	"input_c" : 0.015,
-	"u_delay" : 35,
-
-	"target_threshold" : 0.15,
+	"u_delay" : 30,
+	"traj_correction" : 0,
 	
 	
 	"filter_horizontal_threshold" : 1,
@@ -12,11 +11,11 @@
 	"keyboard_device" : "/dev/input/by-path/platform-i8042-serio-0-event-kbd",
 	"vicon_ip" : "192.168.2.100",
 	"tello_port" : 8889,
-	"tello_net_interface" : "wlxd037456705b2",
+	"tello_net_interface" : "wlxd0374576c511",
 	
 	"mpc_config" : "/home/jsv/CVUT/master-thesis/config/mpc_real.json",
 	"mhe_config" : "/home/jsv/CVUT/master-thesis/config/mhe_real.json",
 
 
-	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/mpc_test"
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/mpc3"
 }

@@ -25,6 +25,35 @@ string target_file = "/home/jsv/CVUT/master-thesis/config/tar_square.json";
 string log_name = "default";
 
 
+Eigen::Vector<double, 4> get_traj_correction(Eigen::Vector<double, 4> pos, 
+	Eigen::Vector<double, 4> target, Eigen::Vector<double, 4> prev_target, double coef)
+{
+	Eigen::Vector<double, 4> result;
+
+	Eigen::Vector3d p;
+	Eigen::Vector3d a;
+	Eigen::Vector3d b;
+	Eigen::Vector3d r;
+
+	for (int i = 0; i < 3; i++) {
+		p[i] = pos[i];
+		a[i] = target[i];
+		b[i] = prev_target[i];
+	}
+
+	auto ap = p - a;
+	auto ab = (b - a).normalized();
+
+	r = a + coef*ap.norm()*(a + ap.dot(ab)*ab - p);
+
+	for (int i = 0; i < 3; i++) {
+		result[i] = r[i];
+	}
+	result[3] = target[3];
+
+	return result;
+}
+
 string get_new_log_name(string folder, string name)
 {
 	int index = 0;
@@ -127,11 +156,12 @@ int main(int argc, char const *argv[])
 	input_t input, input_target;
 	pos_t raw_pos, filt_pos;
 
-	M::s_vec s_est, s_predict, s_target, target_diff;
+	M::s_vec s_est, s_predict, s_target, target_diff, s_mpc_tar;
 	M::p_vec p_est;
 	list<M::u_vec> u_buffer;
 	M::u_vec u_mpc;
 	int u_delay = io_config["u_delay"]; 
+	double traj_correction = io_config["traj_correction"];
 
 	auto start = steady_clock::now();
 	auto next = start;
@@ -164,10 +194,12 @@ int main(int argc, char const *argv[])
 
 		raw_pos = vicon_hndl();
 
-		if (keyboard_hndl['e']) { // manual control
+		if (keyboard_hndl['e'] & ctrl_step != -1) { // manual control
+			cout << "\nMANUAL CONTROL" << endl;
 			ctrl_step = -1;
 		}
-		if (keyboard_hndl['c']) { // get to init target
+		if (keyboard_hndl['c'] & ctrl_step < 0) { // get to init target
+			cout << "\nMPC CONTROL" << endl;
 			ctrl_step = 0;
 		}
 
@@ -216,24 +248,24 @@ int main(int argc, char const *argv[])
 		if (ctrl_step > -2) {
 			mhe.post_request(ts, filt_pos.data, u_buffer.front());
 			s_predict = M::predict_state(s_est, u_buffer, p_est, 0.02);
-			mpc.post_request(ts+1, s_predict, u_buffer.back(), s_target, p_est);
 			target_diff = s_target - s_est;
+			mpc.post_request(ts+1, s_predict, u_buffer.back(), s_target, p_est);
 		}	
 
 		if (ctrl_step >= 0) {
 			double target_dist = target_diff.norm();
 			if (target_dist <= target_tol) {
-				cout << "Target " << ctrl_step << " reached. " << endl;
-				ctrl_step += 1;
+				cout << '\n' << "Target " << ctrl_step << " reached. " << endl;
+				
 				if (ctrl_step == 0) {
 					log_timestep = 0;
 					log_running = true;
-
-					ctrl_step = 1;
 					string log_file = get_new_log_name(io_config["log_dir"], log_name);
 					cout << "Opening log " << log_file << endl;
 					logger.open(log_file);
 				}
+
+				ctrl_step += 1;
 
 				if (ctrl_step >= targets.size()) {
 					ctrl_step = 0;
@@ -254,7 +286,7 @@ int main(int argc, char const *argv[])
 
 		if (ctrl_step > -2) {
 			ts += 1;
-			cout << "ts: " << ts << ", tar diff: " << pos_t(target_diff) << ", input:" << input << "    \r" << flush;
+			cout << "ts: " << ts << ", tar diff: " << pos_t(target_diff) << ", input:" << input << "\r" << flush;
 		}
 
 		next += timestep;
