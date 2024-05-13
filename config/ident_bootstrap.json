@@ -1,0 +1,35 @@
+{
+	"dt" : 0.02,
+	"u_delay": 0,
+	
+	"u_delay_max": 1,
+	"C_o" : [
+	 	3, 3, 2, 0.3
+	],
+	"C_s" : [
+		1, 1, 0.1, 0.3
+	],
+	"C_prior" : [
+		10, 1, 1, 1
+	],
+	
+	"p_prior" : [0.9, 0.6, 0.9, 0],
+	
+	"p_lb" : [0.5, 0.2, 0.5, -1.5],
+	"p_ub" : [1.5, 1, 1.5, 1.5],
+
+	"use_param_shift" : false,
+
+	"obs_loss_s" : 0,
+	"state_loss_s" : 0,
+
+	"max_models" : 100,
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/bootstrap",
+	"clear_log_est_dir" : true,
+
+	"solver_tol" : 1e-5,
+	"solver_threads" : 8,
+	"solver_linear_solver_type" : "sparse_cholesky",
+
+	"solver_stdout" : true
+}
