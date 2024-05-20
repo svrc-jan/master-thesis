@@ -3,7 +3,6 @@
 	"u_delay" : 30,
 	"traj_correction" : 0,
 	
-	
 	"filter_horizontal_threshold" : 1,
 	"filter_vertical_threshold" : 1,
 	"filter_angle_threshold" : 0.05, 
@@ -17,5 +16,5 @@
 	"mhe_config" : "/home/jsv/CVUT/master-thesis/config/mhe_real.json",
 
 
-	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/mpc3"
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/mpc7"
 }

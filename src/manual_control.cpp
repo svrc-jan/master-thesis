@@ -20,7 +20,7 @@
 
 using namespace std;
 
-string io_config_file = "/home/jsv/CVUT/master-thesis/config/real_io.json";
+string io_config_file = "/home/jsv/CVUT/master-thesis/config/io_real.json";
 string log_num = "default";
 
 

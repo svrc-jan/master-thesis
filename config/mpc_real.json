@@ -4,7 +4,9 @@
 	"u_delay" : 30,
 	
 
-	"max_target_distance" : 0.4, 
+	"max_target_distance" : 0.3, 
+
+	"par_correction" : [0, 0, 0, -0.3],
 
 	"C_s" : [
 		1.5, 1.5, 1, 1
@@ -15,7 +17,7 @@
 	],
 
 	"C_u" : [
-		1.5, 1.5, 0.6, 0.8
+		1.2, 1.2, 0.8, 0.8
 	],
 
 	"use_u_diff" : false,

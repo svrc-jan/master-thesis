@@ -157,11 +157,12 @@ int main(int argc, char const *argv[])
 	pos_t raw_pos, filt_pos;
 
 	M::s_vec s_est, s_predict, s_target, target_diff, s_mpc_tar;
-	M::p_vec p_est;
+	M::p_vec p_est, p_corr, p_mpc;
 	list<M::u_vec> u_buffer;
 	M::u_vec u_mpc;
 	int u_delay = io_config["u_delay"]; 
-	double traj_correction = io_config["traj_correction"];
+
+	p_corr = array_to_vector(mpc_config["par_correction"]);
 
 	auto start = steady_clock::now();
 	auto next = start;
@@ -186,6 +187,7 @@ int main(int argc, char const *argv[])
 
 	while (!done)
 	{
+		double roll = 0, pitch = 0, throttle = 0, yaw = 0;
 
 		input_target.pitch = keyboard_hndl['w'] - keyboard_hndl['s'];
 		input_target.roll = keyboard_hndl['d'] - keyboard_hndl['a'];
@@ -236,8 +238,13 @@ int main(int argc, char const *argv[])
 			cout << "tello landing" << endl;
 		}
 		else {
-			tello1.setStickData(false, input.roll, input.pitch, input.throttle, input.yaw);
+			roll = input.roll;
+			pitch = input.pitch;
+			throttle = input.throttle;
+			yaw = input.yaw;
+			tello1.setStickData(false, roll, pitch, throttle, yaw);
 		}
+
 
 		u_buffer.push_back(input.data);
 		while (u_buffer.size() > u_delay + 1)
@@ -248,8 +255,12 @@ int main(int argc, char const *argv[])
 		if (ctrl_step > -2) {
 			mhe.post_request(ts, filt_pos.data, u_buffer.front());
 			s_predict = M::predict_state(s_est, u_buffer, p_est, 0.02);
+			p_mpc = p_est + p_corr;
+			mpc.post_request(ts+1, s_predict, u_buffer.back(), s_target, p_mpc);
+
 			target_diff = s_target - s_est;
-			mpc.post_request(ts+1, s_predict, u_buffer.back(), s_target, p_est);
+			ts += 1;
+			cout << "ts: " << ts << ", tar diff: " << pos_t(target_diff) << ", input:" << input_t(roll, pitch, yaw, throttle) << "\r" << flush;
 		}	
 
 		if (ctrl_step >= 0) {
@@ -282,11 +293,6 @@ int main(int argc, char const *argv[])
 			logger << "param" << log_timestep << p_est << '\n';
 
 			log_timestep += 1;
-		}
-
-		if (ctrl_step > -2) {
-			ts += 1;
-			cout << "ts: " << ts << ", tar diff: " << pos_t(target_diff) << ", input:" << input << "\r" << flush;
 		}
 
 		next += timestep;
