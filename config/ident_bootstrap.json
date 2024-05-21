@@ -24,7 +24,7 @@
 	"state_loss_s" : 0,
 
 	"max_models" : 100,
-	"log_dir" : "/home/jsv/CVUT/master-thesis/logs/bootstrap",
+	"log_dir" : "/home/jsv/CVUT/master-thesis/logs_ident/bootstrap",
 	"clear_log_est_dir" : true,
 
 	"solver_tol" : 1e-5,
