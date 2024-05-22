@@ -3,7 +3,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-plt.rcParams['text.usetex'] = True
+# plt.rcParams['text.usetex'] = True
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    "font.sans-serif": "Helvetica",
+})
 
 # %%
 run = '5'
@@ -142,11 +147,30 @@ t = np.arange(t0, t1)
 
 b = [0.9, 0.6]
 
-ax4.plot(t, a[t0:t1], c=cvut_blue)
-ax4.plot(t, b[0]*np.cumsum(da[t0:t1]) + b[1], c=cvut_orange)
-ax4.plot(t, b[0]*np.cumsum(da_sh[t0:t1]) + b[1], c=cvut_green)
+ln1, = ax4.plot(t, a[t0:t1], c=cvut_blue)
+ln2, = ax4.plot(t, b[0]*np.cumsum(da[t0:t1]) + b[1], c=cvut_orange)
+ln3, = ax4.plot(t, b[0]*np.cumsum(da_sh[t0:t1]) + b[1], c=cvut_green)
 
-plt.show()
+
+fig.suptitle("Delay analysis")
+ax1.set_xlabel('$k$ [-]')
+ax2.set_xlabel('$k$ [-]')
+ax3.set_xlabel('$k$ [-]')
+ax4.set_xlabel('$k$ [-]')
+
+
+ax1.set_ylabel('$x$ [m]')
+ax2.set_ylabel('$y$ [m]')
+ax3.set_ylabel('$z$ [m]')
+ax4.set_ylabel('$\\theta$ [rad]')
+
+lines = (ln1, ln2, ln3)
+labels = ('observation', 'cumulative input', 'shifted cumulative input')
+fig.legend(lines, labels, loc='lower center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, -0.05))
+fig.tight_layout()
+plt.savefig('plots/delay.pdf', bbox_inches="tight")
+
+
 
 
 

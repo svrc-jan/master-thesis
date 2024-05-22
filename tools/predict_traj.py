@@ -6,6 +6,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    "font.sans-serif": "Helvetica",
+})
+
 def state_eq(s, u, p):
 	ds = np.empty_like(s)
 
@@ -54,7 +60,7 @@ def predict(s, u, f, u_len):
 
 if __name__ == '__main__':
 	dt = 0.02
-	p = [1.04, 0.4471, 0.9554, -0.1]
+	p = [1.04, 0.4471, 0.9554, -0.17]
 	u_delay = 30
 	s, u  = get_traj(sys.argv[1])
 	
@@ -63,31 +69,43 @@ if __name__ == '__main__':
 	s_pred = predict(s, u, f, u_delay)
 
 
-	plt.plot(s[0, :], s[1, :])
-	plt.plot(s_pred[0, :], s_pred[1,:])
+	# plt.plot(s[0, :], s[1, :])
+	# plt.plot(s_pred[0, :], s_pred[1,:])
 
-	plt.show()
+	# plt.show()
 
 	t = np.arange(s.shape[1])
 
-	plt.plot(t, s[0])
-	plt.plot(u_delay + t[u_delay:], s_pred[0])
+	ln1, = plt.plot(t, s[0])
+	# plt.plot(t, s[3])
+	ln2, = plt.plot(u_delay + t[u_delay:], s_pred[0])
 
 
 	s_a = s[:, u_delay:]
 	u_a = u[:, :s_a.shape[1]]
 
 	dx = dt*p[0]*(np.cos(s_a[3]+ p[3])*u_a[1] + np.sin(s_a[3] + p[3])*u_a[0])
-	plt.plot(u_delay + t[u_delay:], np.cumsum(dx) - 2)
-	plt.show()
+	ln3, = plt.plot(t[u_delay:], np.cumsum(dx) - 2)
 
 
-	plt.plot(t, s[1])
-	plt.plot(u_delay + t[u_delay:], s_pred[1])
+	plt.xlim([230, 600])
+	plt.ylim([-1.5, 0])
+	plt.title('Prediction')
+	plt.xlabel('$k$ [-]')
+	plt.ylabel('$x$ [m]')
+	lines = (ln1, ln2, ln3)
+	labels = ('state', 'state prediction', 'cumulative input')
+	plt.legend(lines, labels, loc='lower center', ncol=3, fancybox=True, bbox_to_anchor=(0.5, -0.2))
+	plt.savefig('plots/predict.pdf', bbox_inches="tight")
 
-	dy = dt*p[0]*(np.sin(s_a[3]+ p[3])*u_a[1] - np.cos(s_a[3] + p[3])*u_a[0])
-	plt.plot(t[u_delay:], np.cumsum(dy)-1)
-	plt.show()
+
+
+	# plt.plot(t, s[1])
+	# plt.plot(t[u_delay:], s_pred[1])
+
+	# dy = dt*p[0]*(np.sin(s_a[3]+ p[3])*u_a[1] - np.cos(s_a[3] + p[3])*u_a[0])
+	# plt.plot(t[u_delay:], np.cumsum(dy)-1)
+	# plt.show()
 
 
 	
