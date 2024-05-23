@@ -52,6 +52,9 @@ During manual control, the commands are (positive - negative):
  - `J`-`L`: yaw
  - `I`-`K`: throttle
 
+## Log files
+Log files are saved in CSV format. Folder `logs` includes all recored logs, `logs_square` includes only valid logs for the square trajectory for controller analysis, `logs_ident` are split and input shifted (by 30 time-steps) trajectories used for model identification.
+
 ## Configuration file
 The model identification, MHE, MPC and the control program require JSON configuration files saved in the `config` folder.
 
