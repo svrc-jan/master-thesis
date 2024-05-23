@@ -87,6 +87,7 @@ def straighten_idx(idx):
 if __name__ == '__main__':
 	d = []
 	u = []
+	sp = []
 	i = []
 
 	t_len = None
@@ -99,20 +100,25 @@ if __name__ == '__main__':
 		t_len = len(t_d)
 	
 		t_idx = match_trajectory(s, t_d)
-		# t_idx = straighten_idx(t_idx)
+		# =t_idx = straighten_idx(t_idx)
 
 		diff = (s - t_d[t_idx, :]).astype(np.double)
 		dist = np.linalg.norm(diff, axis=1)
 
+		speed = np.linalg.norm(s[1:,:2] - s[:-1,:2], axis=1)
+		speed = np.append(speed, [np.nan])
+
 		d.append(dist)
 		u.append(np.linalg.norm(u_[:,:4], axis=1))
+		sp.append(speed)
 		i.append(t_idx)
 
 
 	d = np.concatenate(d)
 	u = np.concatenate(u)
+	sp = np.concatenate(sp)
 	i = np.concatenate(i)
 
-	np.savetxt('data/match_traj.csv', (d, u, i), delimiter=',')
+	np.savetxt('data/match_traj_straight.csv', (d, u, sp, i), delimiter=',')
 
 
