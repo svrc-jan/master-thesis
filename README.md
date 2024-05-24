@@ -28,7 +28,7 @@ make mpc_control
 The `run_model_ident` has one argument, the path to the configuration file, example:
 
 ```
-build/run_model_ident config/ident_real
+build/run_model_ident config/ident_real.json
 ```
 
 
@@ -36,7 +36,7 @@ build/run_model_ident config/ident_real
 The `mpc_control` has two arguments, name of the log and target configuration file, example:
 
 ```
-build/mpc_control square config/tar_square
+build/mpc_control square config/tar_square.json
 ```
 
 The controls are using keyboard (program requires sudo permissions to access the device):
